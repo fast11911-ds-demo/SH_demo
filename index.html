@@ -43,48 +43,53 @@
 </div>
 
 <script>
+    // [설정값]
     const CLIENT_ID = "62fe74d2-f89f-4842-b255-17c3b9c4a117"; 
-    const ACCOUNT_ID = "61c279f3-3001-436e-9c14-e453cb09f1b3"; // 스니펫에서 추출한 Account ID
+    const ACCOUNT_ID = "61c279f3-3001-436e-9c14-e453cb09f1b3";
     const REDIRECT_URI = window.location.href.split('#')[0]; 
     const ENVIRONMENT = "account-d.docusign.com"; 
 
     let accessToken = null;
-    let jobCounter = 1; // Job 이름 뒤에 붙을 숫자 카운터
+    let jobCounter = 1; // Job 이름 생성을 위한 카운터
 
-    // 페이지 로드 시 토큰 확인
+    // 1. 페이지 로드 시 URL에서 토큰 확인
     window.onload = function() {
         const hash = window.location.hash.substring(1);
         const params = new URLSearchParams(hash);
         
         if (params.has("access_token")) {
             accessToken = params.get("access_token");
+            
+            // 토큰 확보 시 UI 업데이트
             document.getElementById('auth-status').innerText = "✅ 로그인 성공! (Token 확보됨)";
             document.getElementById('auth-status').style.color = "var(--ds-success)";
             document.getElementById('loginBtn').style.display = "none";
             document.getElementById('uploadSection').style.display = "block";
+            
+            // URL 정리
             window.history.replaceState(null, null, window.location.pathname);
         }
     };
 
-    // 로그인 이동
+    // 2. DocuSign 로그인 페이지로 이동
     function loginWithDocuSign() {
         const scope = "signature adm_store_unified_repo_read adm_store_unified_repo_write models_read document_uploader_read document_uploader_write public_dms_document_read"; 
         const authUrl = `https://${ENVIRONMENT}/oauth/auth?response_type=token&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=${encodeURIComponent(scope)}`;
         window.location.href = authUrl; 
     }
 
-    // Job 이름 생성기 (YYYYMMDD001 형식)
+    // 3. Job 이름 동적 생성 (YYYYMMDD001 형식)
     function generateJobName() {
         const today = new Date();
         const yyyy = today.getFullYear();
         const mm = String(today.getMonth() + 1).padStart(2, '0');
         const dd = String(today.getDate()).padStart(2, '0');
         const counterStr = String(jobCounter).padStart(3, '0');
-        jobCounter++; // 다음 번 호출을 위해 카운터 1 증가
+        jobCounter++; 
         return `${yyyy}${mm}${dd}${counterStr}`;
     }
 
-    // 파일 선택
+    // 4. 파일 선택 UI 핸들링
     let selectedFiles = [];
     function triggerFileInput() { document.getElementById('fileInput').click(); }
     function handleFileSelect(event) {
@@ -104,14 +109,14 @@
         }
     }
 
-    // 화면에 로그를 찍어주는 헬퍼 함수
+    // 5. 화면 로그 출력 헬퍼 함수
     function logToScreen(message) {
         const logBox = document.getElementById('logBox');
         logBox.style.display = 'block';
         logBox.innerHTML += message + "\n";
     }
 
-    // Submit 버튼 클릭 (1단계 API 호출)
+    // 6. Submit 버튼 클릭 - Step 1: Bulk Upload Job 생성 API 호출
     async function handleSubmit() {
         if (!accessToken) { alert("토큰이 없습니다."); return; }
         if (selectedFiles.length === 0) return;
@@ -119,20 +124,21 @@
         const submitBtn = document.getElementById('submitBtn');
         submitBtn.disabled = true;
         submitBtn.innerText = "Processing...";
-        document.getElementById('logBox').innerHTML = ""; // 로그 초기화
+        const logBox = document.getElementById('logBox');
+        logBox.innerHTML = ""; // 로그 초기화
+        logBox.style.display = 'block';
 
         try {
             const jobName = generateJobName();
-            const expectedNumber = selectedFiles.length; // 실제 첨부한 파일 갯수
+            const expectedNumber = selectedFiles.length; 
             
-            logToScreen(`[Step 1] Creating Upload Job...\n - Job Name: ${jobName}\n - Files: ${expectedNumber}`);
+            logToScreen(`[Step 1] Creating Bulk Upload Job...`);
+            logToScreen(` - Job Name: ${jobName}\n - Files count: ${expectedNumber}`);
 
-            // 1. 헤더 설정
             const myHeaders = new Headers();
             myHeaders.append("Authorization", `Bearer ${accessToken}`);
             myHeaders.append("Content-Type", "application/json");
 
-            // 2. 바디 설정
             const raw = JSON.stringify({
                 "agreement_set_ids": [],
                 "expected_number_of_docs": expectedNumber,
@@ -140,7 +146,6 @@
                 "language": "en-US"
             });
 
-            // 3. 호출 옵션
             const requestOptions = {
                 method: "POST",
                 headers: myHeaders,
@@ -150,26 +155,41 @@
 
             const url = `https://api-d.docusign.com/v1/accounts/${ACCOUNT_ID}/upload/jobs`;
             
-            // 4. API Fetch 실행
-            const response = await fetch(url, requestOptions);
-            const result = await response.json(); // 응답을 JSON 객체로 파싱
-            
-            console.log("[Step 1 Response]:", result);
-
-            // 5. 응답에서 Job ID 추출 (API 응답 필드명에 따라 id 또는 job_id 일 수 있음)
-            const createdJobId = result.id || result.job_id || result.jobId;
-
-            if (!createdJobId) {
-                throw new Error("Job ID를 찾을 수 없습니다. 응답 내용: " + JSON.stringify(result));
+            let response;
+            try {
+                response = await fetch(url, requestOptions);
+            } catch (networkError) {
+                throw new Error("네트워크 또는 CORS 통신 에러가 발생했습니다.\n(상세: " + networkError.message + ")");
             }
 
-            logToScreen(`✅ [Step 1 Success] Job ID 생성 완료: ${createdJobId}`);
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`서버 응답 오류 (HTTP ${response.status})\n에러 상세: ${errorText}`);
+            }
+
+            const result = await response.json();
+            console.log("[Step 1 API Response]:", result);
+
+            // Job ID 추출 (API 응답 필드명에 맞게 유연하게 대처)
+            const createdJobId = result.id || result.job_id || result.bulkJobId;
+
+            if (!createdJobId) {
+                logToScreen("\n⚠️ 정상적으로 통신되었으나 응답 내용에서 Job ID를 찾을 수 없습니다.");
+                logToScreen("응답 데이터:\n" + JSON.stringify(result, null, 2));
+                return; 
+            }
+
+            logToScreen(`\n✅ [Step 1 Success] Job 생성 완료!`);
+            logToScreen(` - Job ID: ${createdJobId}`);
             
-            // TODO: 여기서 2단계 호출을 이어서 진행합니다.
+            // 전역 변수로 Job ID를 저장해두어 다음 스텝에서 사용할 수 있게 합니다.
+            window.currentJobId = createdJobId;
+
+            logToScreen(`\n--> 다음 API 콜(Step 2)을 대기 중입니다...`);
 
         } catch (error) {
             console.error("API Error:", error);
-            logToScreen(`❌ [Error] ${error.message}`);
+            logToScreen(`\n❌ [에러 발생]\n${error.message}`);
         } finally {
             submitBtn.disabled = false;
             submitBtn.innerText = "Submit";
