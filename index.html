@@ -3,267 +3,117 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DocuSign Navigator Mockup</title>
+    <title>DocuSign Navigator Mockup - Auth</title>
     <style>
-        :root {
-            --ds-blue: #09357B;
-            --ds-light-blue: #E6F0FF;
-            --ds-success: #2e8b57;
-            --ds-text: #333333;
-        }
-
-        body {
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            margin: 0;
-            background-color: #f8f9fa;
-            color: var(--ds-text);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-        }
-
-        .container {
-            background: white;
-            width: 90%;
-            max-width: 650px;
-            padding: 40px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            text-align: center;
-            margin: 40px 0;
-        }
-
-        .logo {
-            font-weight: bold;
-            font-size: 24px;
-            color: var(--ds-blue);
-            margin-bottom: 20px;
-        }
-
-        h1 { font-size: 1.8rem; margin-bottom: 15px; }
-        p { line-height: 1.6; color: #666; margin-bottom: 30px; }
-
-        .upload-section {
-            border: 2px dashed #ccc;
-            padding: 40px 30px;
-            border-radius: 10px;
-            background-color: #fafafa;
-            transition: all 0.3s;
-        }
-
-        .upload-section:hover {
-            border-color: var(--ds-blue);
-            background-color: var(--ds-light-blue);
-        }
-
-        /* 버튼 스타일 통합 */
-        button {
-            border: none;
-            padding: 15px 30px;
-            font-size: 1rem;
-            font-weight: 600;
-            border-radius: 4px;
-            cursor: pointer;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            transition: background 0.2s;
-        }
-
-        .btn-upload { background-color: var(--ds-blue); color: white; }
+        /* 기존 스타일 유지 (생략 없이 사용하세요) */
+        :root { --ds-blue: #09357B; --ds-light-blue: #E6F0FF; --ds-success: #2e8b57; --ds-text: #333333; }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; background-color: #f8f9fa; color: var(--ds-text); display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .container { background: white; width: 90%; max-width: 650px; padding: 40px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center; margin: 40px 0; }
+        .logo { font-weight: bold; font-size: 24px; color: var(--ds-blue); margin-bottom: 20px; }
+        button { border: none; padding: 15px 30px; font-size: 1rem; font-weight: 600; border-radius: 4px; cursor: pointer; color: white; transition: background 0.2s; }
+        .btn-login { background-color: #ffaa00; margin-bottom: 20px; color: #333; }
+        .btn-login:hover { background-color: #e69900; }
+        .btn-upload { background-color: var(--ds-blue); }
         .btn-upload:hover { background-color: #06265a; }
-
-        .btn-submit {
-            background-color: var(--ds-success);
-            color: white;
-            width: 100%;
-            margin-top: 15px;
-            display: none; /* 초기에는 숨김 */
-        }
-        .btn-submit:hover { background-color: #246b43; }
-        .btn-submit:disabled { background-color: #8fbc9f; cursor: not-allowed; }
-
-        /* 파일 리스트 스타일 */
-        .file-list {
-            list-style-type: none;
-            padding: 0;
-            margin: 20px 0 0 0;
-            text-align: left;
-        }
-
-        .file-list li {
-            background: white;
-            border: 1px solid #ddd;
-            padding: 12px 15px;
-            margin-bottom: 8px;
-            border-radius: 5px;
-            font-size: 0.95rem;
-            display: flex;
-            justify-content: space-between;
-        }
-
-        .file-size { color: #888; font-size: 0.85rem; }
-
-        #result-area {
-            margin-top: 30px;
-            display: none;
-            text-align: left;
-            padding: 20px;
-            background: #f1f1f1;
-            border-radius: 5px;
-        }
-
-        .result-card {
-            background: white;
-            border: 1px solid #ddd;
-            padding: 15px;
-            margin-bottom: 10px;
-            border-radius: 5px;
-        }
-
-        .loading-spinner {
-            display: none;
-            margin: 20px auto;
-            width: 30px;
-            height: 30px;
-            border: 4px solid rgba(0,0,0,0.1);
-            border-top: 4px solid var(--ds-blue);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+        .btn-submit { background-color: var(--ds-success); width: 100%; margin-top: 15px; display: none; }
+        .upload-section { border: 2px dashed #ccc; padding: 40px 30px; border-radius: 10px; background-color: #fafafa; display: none; /* 로그인 전에는 업로드 영역 숨김 */ }
+        .file-list { list-style: none; padding: 0; margin: 20px 0 0; text-align: left; }
+        .file-list li { background: white; border: 1px solid #ddd; padding: 12px; margin-bottom: 8px; border-radius: 5px; display: flex; justify-content: space-between; }
+        #auth-status { margin-bottom: 20px; font-weight: bold; color: #d93025; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="logo">DocuSign Navigator</div>
-    <h1>Welcome to Docusign Navigator upload page.</h1>
-    <p>
-        Your uploaded agreements will save into Docusign Navigator. <br>
-        This website will get the document ID from Docusign Navigator and visualize what information extracted via AI.
-    </p>
+    <h1>Welcome to Docusign Navigator</h1>
 
-    <div class="upload-section">
+    <div id="auth-status">🔒 로그인이 필요합니다.</div>
+    <button class="btn-login" id="loginBtn" onclick="loginWithDocuSign()">Login with DocuSign</button>
+
+    <div class="upload-section" id="uploadSection">
+        <p>Your uploaded agreements will save into Docusign Navigator.</p>
         <input type="file" id="fileInput" multiple style="display: none;" onchange="handleFileSelect(event)">
-        
         <button class="btn-upload" onclick="triggerFileInput()">Upload Agreement</button>
-        
         <ul class="file-list" id="fileList"></ul>
-        
         <button class="btn-submit" id="submitBtn" onclick="handleSubmit()">Submit</button>
-
-        <div class="loading-spinner" id="loader"></div>
-    </div>
-
-    <div id="result-area">
-        <h3 style="margin-top:0; border-bottom: 2px solid #ccc; padding-bottom: 10px;">AI Extraction Results</h3>
-        <div id="ai-data"></div>
     </div>
 </div>
 
 <script>
-    let selectedFiles = []; // 선택된 파일들을 저장할 배열
+    // [설정값] DocuSign Admin에서 발급받은 정보로 변경하세요!
+    const CLIENT_ID = "YOUR_INTEGRATION_KEY_HERE"; 
+    const REDIRECT_URI = window.location.href.split('#')[0]; // 현재 페이지 주소
+    const ENVIRONMENT = "account-d.docusign.com"; // 개발용 (운영은 account.docusign.com)
 
-    // 1. 버튼 클릭 시 숨겨진 파일 탐색기 열기
-    function triggerFileInput() {
-        document.getElementById('fileInput').click();
+    let accessToken = null;
+
+    // 1. 페이지 로드 시 URL에서 토큰 확인
+    window.onload = function() {
+        // DocuSign에서 돌아왔을 때 주소창의 # 뒤에 있는 값들을 파싱
+        const hash = window.location.hash.substring(1);
+        const params = new URLSearchParams(hash);
+        
+        if (params.has("access_token")) {
+            accessToken = params.get("access_token");
+            
+            // 토큰을 얻었으니 UI 변경
+            document.getElementById('auth-status').innerText = "✅ 로그인 성공! (Token 확보됨)";
+            document.getElementById('auth-status').style.color = "var(--ds-success)";
+            document.getElementById('loginBtn').style.display = "none";
+            document.getElementById('uploadSection').style.display = "block";
+            
+            // URL을 깔끔하게 정리 (선택사항)
+            window.history.replaceState(null, null, window.location.pathname);
+        }
+    };
+
+    // 2. DocuSign 로그인 페이지로 이동
+    function loginWithDocuSign() {
+        if(CLIENT_ID === "62fe74d2-f89f-4842-b255-17c3b9c4a117") {
+            alert("코드 내에 CLIENT_ID를 먼저 입력해주세요!");
+            return;
+        }
+
+        // Navigator 관련 Scope가 필요할 수 있습니다. (예: signature navigator 등)
+        const scope = "signature adm_store_unified_repo_read adm_store_unified_repo_write models_read document_uploader_read document_uploader_write public_dms_document_read"; 
+        
+        const authUrl = `https://${ENVIRONMENT}/oauth/auth?response_type=token&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=${scope}`;
+        
+        window.location.href = authUrl; // 페이지 이동
     }
 
-    // 2. 파일이 선택되었을 때 리스트 그리기
+    // 파일 선택 및 리스트 렌더링 로직 (이전과 동일)
+    let selectedFiles = [];
+    function triggerFileInput() { document.getElementById('fileInput').click(); }
     function handleFileSelect(event) {
         selectedFiles = Array.from(event.target.files);
         const fileListElement = document.getElementById('fileList');
         const submitBtn = document.getElementById('submitBtn');
-        const resultArea = document.getElementById('result-area');
-        
-        fileListElement.innerHTML = ''; // 기존 리스트 초기화
-        resultArea.style.display = 'none'; // 이전 결과 숨기기
-
+        fileListElement.innerHTML = '';
         if (selectedFiles.length > 0) {
-            // 선택된 파일들을 HTML 리스트로 생성
             selectedFiles.forEach(file => {
                 const li = document.createElement('li');
-                const fileSize = (file.size / 1024).toFixed(1); // KB 단위 변환
-                li.innerHTML = `<span>📄 ${file.name}</span> <span class="file-size">${fileSize} KB</span>`;
+                li.innerHTML = `<span>📄 ${file.name}</span>`;
                 fileListElement.appendChild(li);
             });
-            submitBtn.style.display = 'block'; // Submit 버튼 표시
+            submitBtn.style.display = 'block';
         } else {
-            submitBtn.style.display = 'none'; // 선택 취소 시 Submit 버튼 숨김
+            submitBtn.style.display = 'none';
         }
     }
 
-    // 3. Submit 버튼 클릭 시 API 전송 로직 (Placeholder)
+    // 3. Submit 클릭 시 실제 API 호출 로직 뼈대
     async function handleSubmit() {
-        if (selectedFiles.length === 0) return;
-
-        const loader = document.getElementById('loader');
-        const resultArea = document.getElementById('result-area');
-        const submitBtn = document.getElementById('submitBtn');
-        const aiDataElement = document.getElementById('ai-data');
-
-        // UI 업데이트: 로딩 시작 및 버튼 비활성화
-        loader.style.display = 'block';
-        submitBtn.disabled = true;
-        submitBtn.innerText = "Uploading...";
-
-        try {
-            /** * [PLACEHOLDER] DocuSign Navigator API 로직
-             * 1. FormData 객체를 생성하여 selectedFiles 배열의 파일들을 추가합니다.
-             * 2. POST 요청으로 여러 파일을 한 번에, 혹은 반복문을 돌며 개별 전송합니다.
-             */
-            console.log("Submitting " + selectedFiles.length + " files to API...");
-
-            // API 호출 시뮬레이션 (2.5초 대기 후 다중 파일 결과 반환)
-            const mockResponse = await new Promise(resolve => 
-                setTimeout(() => resolve(
-                    selectedFiles.map((file, index) => ({
-                        fileName: file.name,
-                        documentId: `NAV-8273-XM92-L0${index + 1}`,
-                        extractedData: {
-                            partyName: file.name.split('.')[0].toUpperCase() + " CORP",
-                            contractType: "Master Service Agreement",
-                            status: "Active"
-                        }
-                    }))
-                ), 2500)
-            );
-
-            // 결과 시각화
-            let resultsHtml = '';
-            mockResponse.forEach(doc => {
-                resultsHtml += `
-                    <div class="result-card">
-                        <strong>${doc.fileName}</strong><br>
-                        <span style="font-family: monospace; font-size: 0.85rem; color: #555;">Document ID: ${doc.documentId}</span>
-                        <ul style="margin-top: 10px; font-size: 0.95rem;">
-                            <li><strong>Party Name:</strong> ${doc.extractedData.partyName}</li>
-                            <li><strong>Contract Type:</strong> ${doc.extractedData.contractType}</li>
-                            <li><strong>Status:</strong> <span style="color: green;">${doc.extractedData.status}</span></li>
-                        </ul>
-                    </div>
-                `;
-            });
-
-            aiDataElement.innerHTML = resultsHtml;
-            
-            // 로딩 종료 및 결과창 표시
-            loader.style.display = 'none';
-            resultArea.style.display = 'block';
-            submitBtn.disabled = false;
-            submitBtn.innerText = "Submit";
-
-        } catch (error) {
-            console.error("Upload failed:", error);
-            alert("업로드 중 오류가 발생했습니다.");
-            loader.style.display = 'none';
-            submitBtn.disabled = false;
-            submitBtn.innerText = "Submit";
+        if (!accessToken) {
+            alert("토큰이 없습니다. 다시 로그인해주세요.");
+            return;
         }
+        
+        console.log("획득한 토큰으로 API를 호출합니다:", accessToken);
+        // 여기서부터 Postman에서 확인하신 Fetch 코드가 들어가게 됩니다!
+        // headers에 'Authorization': `Bearer ${accessToken}` 가 들어갑니다.
+        alert("콘솔창(F12)을 확인하세요. API 호출 준비 완료!");
     }
 </script>
 
