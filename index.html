@@ -28,7 +28,7 @@
     <div class="logo">DocuSign Navigator</div>
     <h1>Welcome to Docusign Navigator</h1>
 
-    <div id="auth-status">🔒 로그인이 필요합니다.</div>
+    <div id="auth-status">🔒 Please login Docusign IAM.</div>
     <button class="btn-login" id="loginBtn" onclick="loginWithDocuSign()">Login with DocuSign</button>
 
     <div class="upload-section" id="uploadSection">
@@ -42,7 +42,7 @@
 
 <script>
     // [설정값] DocuSign Admin에서 발급받은 정보로 변경하세요!
-    const CLIENT_ID = "YOUR_INTEGRATION_KEY_HERE"; 
+    const CLIENT_ID = "62fe74d2-f89f-4842-b255-17c3b9c4a117"; 
     const REDIRECT_URI = window.location.href.split('#')[0]; // 현재 페이지 주소
     const ENVIRONMENT = "account-d.docusign.com"; // 개발용 (운영은 account.docusign.com)
 
