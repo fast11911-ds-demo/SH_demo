@@ -3,88 +3,181 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>나의 로컬 목업 사이트</title>
+    <title>DocuSign Navigator Mockup</title>
     <style>
-        /* 기본 스타일 설정 */
+        :root {
+            --ds-blue: #09357B;
+            --ds-light-blue: #E6F0FF;
+            --ds-text: #333333;
+        }
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             margin: 0;
-            padding: 0;
+            background-color: #f8f9fa;
+            color: var(--ds-text);
             display: flex;
-            flex-direction: column;
+            justify-content: center;
             align-items: center;
-            background-color: #f4f7f6;
+            height: 100vh;
         }
 
-        /* 내비게이션 바 */
-        header {
-            width: 100%;
-            background-color: #333;
-            color: white;
-            padding: 1rem 0;
-            text-align: center;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-
-        /* 메인 콘텐츠 영역 */
-        main {
-            max-width: 800px;
-            width: 90%;
-            margin-top: 50px;
+        .container {
             background: white;
+            width: 90%;
+            max-width: 600px;
             padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             text-align: center;
         }
 
-        h1 { color: #2c3e50; }
-        p { color: #7f8c8d; line-height: 1.6; }
+        .logo {
+            font-weight: bold;
+            font-size: 24px;
+            color: var(--ds-blue);
+            margin-bottom: 20px;
+        }
 
-        /* 버튼 스타일 */
-        .cta-button {
-            background-color: #3498db;
+        h1 {
+            font-size: 1.8rem;
+            margin-bottom: 15px;
+        }
+
+        p {
+            line-height: 1.6;
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .upload-section {
+            border: 2px dashed #ccc;
+            padding: 40px 20px;
+            border-radius: 10px;
+            background-color: #fafafa;
+            transition: all 0.3s;
+        }
+
+        .upload-section:hover {
+            border-color: var(--ds-blue);
+            background-color: var(--ds-light-blue);
+        }
+
+        .btn-upload {
+            background-color: var(--ds-blue);
             color: white;
             border: none;
-            padding: 12px 24px;
+            padding: 15px 30px;
             font-size: 1rem;
-            border-radius: 5px;
+            font-weight: 600;
+            border-radius: 4px;
             cursor: pointer;
-            transition: background 0.3s ease;
-            margin-top: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
 
-        .cta-button:hover { background-color: #2980b9; }
+        .btn-upload:hover {
+            background-color: #06265a;
+        }
 
-        /* 간단한 대화형 알림창 */
-        #status {
-            margin-top: 20px;
-            font-weight: bold;
-            color: #27ae60;
+        #result-area {
+            margin-top: 30px;
+            display: none; /* 초기에는 숨김 */
+            text-align: left;
+            padding: 20px;
+            background: #f1f1f1;
+            border-radius: 5px;
+        }
+
+        .loading-spinner {
+            display: none;
+            margin: 20px auto;
+            width: 30px;
+            height: 30px;
+            border: 4px solid rgba(0,0,0,0.1);
+            border-top: 4px solid var(--ds-blue);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
 <body>
 
-    <header>
-        <h2>Project Mockup</h2>
-    </header>
+<div class="container">
+    <div class="logo">DocuSign Navigator</div>
+    <h1>Welcome to Docusign Navigator upload page.</h1>
+    <p>
+        Your uploaded agreements will save into Docusign Navigator. <br>
+        This website will get the document ID from Docusign Navigator and visualize what information extracted via AI.
+    </p>
 
-    <main>
-        <h1>환영합니다! 👋</h1>
-        <p>이것은 로컬에서 즉시 확인 가능한 웹사이트 목업 예시입니다.<br> 
-           디자인 구성 요소나 기능을 여기에서 바로 테스트해 볼 수 있습니다.</p>
-        
-        <button class="cta-button" onclick="showMessage()">작동 확인하기</button>
-        <p id="status"></p>
-    </main>
+    <div class="upload-section">
+        <button class="btn-upload" onclick="handleUpload()">Upload Agreement</button>
+        <div class="loading-spinner" id="loader"></div>
+    </div>
 
-    <script>
-        function showMessage() {
-            const status = document.getElementById('status');
-            status.innerText = "버튼이 성공적으로 작동했습니다! 🚀";
+    <div id="result-area">
+        <h4 style="margin-top:0;">AI Extraction Result:</h4>
+        <p id="doc-id" style="font-family: monospace; font-size: 0.9rem;"></p>
+        <div id="ai-data"></div>
+    </div>
+</div>
+
+<script>
+    async function handleUpload() {
+        const loader = document.getElementById('loader');
+        const resultArea = document.getElementById('result-area');
+        const docIdElement = document.getElementById('doc-id');
+        const aiDataElement = document.getElementById('ai-data');
+
+        // UI 업데이트
+        loader.style.display = 'block';
+        resultArea.style.display = 'none';
+
+        try {
+            /** * [PLACEHOLDER] DocuSign Navigator API 로직
+             * 여기에 API 연동 코드를 넣으세요.
+             * 1. 파일 선택 후 Navigator API로 전송 (POST /agreements)
+             * 2. 응답으로 받은 Document ID 추출
+             */
+            console.log("Connecting to DocuSign Navigator API...");
+
+            // API 호출 시뮬레이션 (3초 대기)
+            const mockResponse = await new Promise(resolve => 
+                setTimeout(() => resolve({
+                    documentId: "NAV-8273-XM92-L01",
+                    status: "Completed",
+                    extractedData: {
+                        partyName: "ABC Corporation",
+                        expiryDate: "2027-12-31",
+                        contractType: "Service Agreement"
+                    }
+                }), 2000)
+            );
+
+            // 결과 시각화
+            loader.style.display = 'none';
+            resultArea.style.display = 'block';
+            docIdElement.innerText = "Document ID: " + mockResponse.documentId;
+            aiDataElement.innerHTML = `
+                <ul>
+                    <li><strong>Party Name:</strong> ${mockResponse.extractedData.partyName}</li>
+                    <li><strong>Expiry Date:</strong> ${mockResponse.extractedData.expiryDate}</li>
+                    <li><strong>Contract Type:</strong> ${mockResponse.extractedData.contractType}</li>
+                </ul>
+            `;
+
+        } catch (error) {
+            console.error("Upload failed:", error);
+            alert("API 연결 중 오류가 발생했습니다.");
+            loader.style.display = 'none';
         }
-    </script>
+    }
+</script>
 
 </body>
 </html>
