@@ -8,6 +8,7 @@
         :root {
             --ds-blue: #09357B;
             --ds-light-blue: #E6F0FF;
+            --ds-success: #2e8b57;
             --ds-text: #333333;
         }
 
@@ -19,17 +20,18 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
         }
 
         .container {
             background: white;
             width: 90%;
-            max-width: 600px;
+            max-width: 650px;
             padding: 40px;
             border-radius: 8px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             text-align: center;
+            margin: 40px 0;
         }
 
         .logo {
@@ -39,20 +41,12 @@
             margin-bottom: 20px;
         }
 
-        h1 {
-            font-size: 1.8rem;
-            margin-bottom: 15px;
-        }
-
-        p {
-            line-height: 1.6;
-            color: #666;
-            margin-bottom: 30px;
-        }
+        h1 { font-size: 1.8rem; margin-bottom: 15px; }
+        p { line-height: 1.6; color: #666; margin-bottom: 30px; }
 
         .upload-section {
             border: 2px dashed #ccc;
-            padding: 40px 20px;
+            padding: 40px 30px;
             border-radius: 10px;
             background-color: #fafafa;
             transition: all 0.3s;
@@ -63,28 +57,66 @@
             background-color: var(--ds-light-blue);
         }
 
-        .btn-upload {
-            background-color: var(--ds-blue);
-            color: white;
+        /* 버튼 스타일 통합 */
+        button {
             border: none;
             padding: 15px 30px;
             font-size: 1rem;
             font-weight: 600;
             border-radius: 4px;
             cursor: pointer;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: background 0.2s;
         }
 
-        .btn-upload:hover {
-            background-color: #06265a;
+        .btn-upload { background-color: var(--ds-blue); color: white; }
+        .btn-upload:hover { background-color: #06265a; }
+
+        .btn-submit {
+            background-color: var(--ds-success);
+            color: white;
+            width: 100%;
+            margin-top: 15px;
+            display: none; /* 초기에는 숨김 */
         }
+        .btn-submit:hover { background-color: #246b43; }
+        .btn-submit:disabled { background-color: #8fbc9f; cursor: not-allowed; }
+
+        /* 파일 리스트 스타일 */
+        .file-list {
+            list-style-type: none;
+            padding: 0;
+            margin: 20px 0 0 0;
+            text-align: left;
+        }
+
+        .file-list li {
+            background: white;
+            border: 1px solid #ddd;
+            padding: 12px 15px;
+            margin-bottom: 8px;
+            border-radius: 5px;
+            font-size: 0.95rem;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .file-size { color: #888; font-size: 0.85rem; }
 
         #result-area {
             margin-top: 30px;
-            display: none; /* 초기에는 숨김 */
+            display: none;
             text-align: left;
             padding: 20px;
             background: #f1f1f1;
+            border-radius: 5px;
+        }
+
+        .result-card {
+            background: white;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 10px;
             border-radius: 5px;
         }
 
@@ -116,65 +148,121 @@
     </p>
 
     <div class="upload-section">
-        <button class="btn-upload" onclick="handleUpload()">Upload Agreement</button>
+        <input type="file" id="fileInput" multiple style="display: none;" onchange="handleFileSelect(event)">
+        
+        <button class="btn-upload" onclick="triggerFileInput()">Upload Agreement</button>
+        
+        <ul class="file-list" id="fileList"></ul>
+        
+        <button class="btn-submit" id="submitBtn" onclick="handleSubmit()">Submit</button>
+
         <div class="loading-spinner" id="loader"></div>
     </div>
 
     <div id="result-area">
-        <h4 style="margin-top:0;">AI Extraction Result:</h4>
-        <p id="doc-id" style="font-family: monospace; font-size: 0.9rem;"></p>
+        <h3 style="margin-top:0; border-bottom: 2px solid #ccc; padding-bottom: 10px;">AI Extraction Results</h3>
         <div id="ai-data"></div>
     </div>
 </div>
 
 <script>
-    async function handleUpload() {
+    let selectedFiles = []; // 선택된 파일들을 저장할 배열
+
+    // 1. 버튼 클릭 시 숨겨진 파일 탐색기 열기
+    function triggerFileInput() {
+        document.getElementById('fileInput').click();
+    }
+
+    // 2. 파일이 선택되었을 때 리스트 그리기
+    function handleFileSelect(event) {
+        selectedFiles = Array.from(event.target.files);
+        const fileListElement = document.getElementById('fileList');
+        const submitBtn = document.getElementById('submitBtn');
+        const resultArea = document.getElementById('result-area');
+        
+        fileListElement.innerHTML = ''; // 기존 리스트 초기화
+        resultArea.style.display = 'none'; // 이전 결과 숨기기
+
+        if (selectedFiles.length > 0) {
+            // 선택된 파일들을 HTML 리스트로 생성
+            selectedFiles.forEach(file => {
+                const li = document.createElement('li');
+                const fileSize = (file.size / 1024).toFixed(1); // KB 단위 변환
+                li.innerHTML = `<span>📄 ${file.name}</span> <span class="file-size">${fileSize} KB</span>`;
+                fileListElement.appendChild(li);
+            });
+            submitBtn.style.display = 'block'; // Submit 버튼 표시
+        } else {
+            submitBtn.style.display = 'none'; // 선택 취소 시 Submit 버튼 숨김
+        }
+    }
+
+    // 3. Submit 버튼 클릭 시 API 전송 로직 (Placeholder)
+    async function handleSubmit() {
+        if (selectedFiles.length === 0) return;
+
         const loader = document.getElementById('loader');
         const resultArea = document.getElementById('result-area');
-        const docIdElement = document.getElementById('doc-id');
+        const submitBtn = document.getElementById('submitBtn');
         const aiDataElement = document.getElementById('ai-data');
 
-        // UI 업데이트
+        // UI 업데이트: 로딩 시작 및 버튼 비활성화
         loader.style.display = 'block';
-        resultArea.style.display = 'none';
+        submitBtn.disabled = true;
+        submitBtn.innerText = "Uploading...";
 
         try {
             /** * [PLACEHOLDER] DocuSign Navigator API 로직
-             * 여기에 API 연동 코드를 넣으세요.
-             * 1. 파일 선택 후 Navigator API로 전송 (POST /agreements)
-             * 2. 응답으로 받은 Document ID 추출
+             * 1. FormData 객체를 생성하여 selectedFiles 배열의 파일들을 추가합니다.
+             * 2. POST 요청으로 여러 파일을 한 번에, 혹은 반복문을 돌며 개별 전송합니다.
              */
-            console.log("Connecting to DocuSign Navigator API...");
+            console.log("Submitting " + selectedFiles.length + " files to API...");
 
-            // API 호출 시뮬레이션 (3초 대기)
+            // API 호출 시뮬레이션 (2.5초 대기 후 다중 파일 결과 반환)
             const mockResponse = await new Promise(resolve => 
-                setTimeout(() => resolve({
-                    documentId: "NAV-8273-XM92-L01",
-                    status: "Completed",
-                    extractedData: {
-                        partyName: "ABC Corporation",
-                        expiryDate: "2027-12-31",
-                        contractType: "Service Agreement"
-                    }
-                }), 2000)
+                setTimeout(() => resolve(
+                    selectedFiles.map((file, index) => ({
+                        fileName: file.name,
+                        documentId: `NAV-8273-XM92-L0${index + 1}`,
+                        extractedData: {
+                            partyName: file.name.split('.')[0].toUpperCase() + " CORP",
+                            contractType: "Master Service Agreement",
+                            status: "Active"
+                        }
+                    }))
+                ), 2500)
             );
 
             // 결과 시각화
+            let resultsHtml = '';
+            mockResponse.forEach(doc => {
+                resultsHtml += `
+                    <div class="result-card">
+                        <strong>${doc.fileName}</strong><br>
+                        <span style="font-family: monospace; font-size: 0.85rem; color: #555;">Document ID: ${doc.documentId}</span>
+                        <ul style="margin-top: 10px; font-size: 0.95rem;">
+                            <li><strong>Party Name:</strong> ${doc.extractedData.partyName}</li>
+                            <li><strong>Contract Type:</strong> ${doc.extractedData.contractType}</li>
+                            <li><strong>Status:</strong> <span style="color: green;">${doc.extractedData.status}</span></li>
+                        </ul>
+                    </div>
+                `;
+            });
+
+            aiDataElement.innerHTML = resultsHtml;
+            
+            // 로딩 종료 및 결과창 표시
             loader.style.display = 'none';
             resultArea.style.display = 'block';
-            docIdElement.innerText = "Document ID: " + mockResponse.documentId;
-            aiDataElement.innerHTML = `
-                <ul>
-                    <li><strong>Party Name:</strong> ${mockResponse.extractedData.partyName}</li>
-                    <li><strong>Expiry Date:</strong> ${mockResponse.extractedData.expiryDate}</li>
-                    <li><strong>Contract Type:</strong> ${mockResponse.extractedData.contractType}</li>
-                </ul>
-            `;
+            submitBtn.disabled = false;
+            submitBtn.innerText = "Submit";
 
         } catch (error) {
             console.error("Upload failed:", error);
-            alert("API 연결 중 오류가 발생했습니다.");
+            alert("업로드 중 오류가 발생했습니다.");
             loader.style.display = 'none';
+            submitBtn.disabled = false;
+            submitBtn.innerText = "Submit";
         }
     }
 </script>
