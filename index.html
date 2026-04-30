@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DocuSign Navigator Mockup - Auth</title>
+    <title>DocuSign Navigator Mockup - API Step 1</title>
     <style>
-        /* 기존 스타일 유지 (생략 없이 사용하세요) */
         :root { --ds-blue: #09357B; --ds-light-blue: #E6F0FF; --ds-success: #2e8b57; --ds-text: #333333; }
         body { font-family: 'Segoe UI', sans-serif; margin: 0; background-color: #f8f9fa; color: var(--ds-text); display: flex; justify-content: center; align-items: center; min-height: 100vh; }
         .container { background: white; width: 90%; max-width: 650px; padding: 40px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center; margin: 40px 0; }
@@ -16,10 +15,11 @@
         .btn-upload { background-color: var(--ds-blue); }
         .btn-upload:hover { background-color: #06265a; }
         .btn-submit { background-color: var(--ds-success); width: 100%; margin-top: 15px; display: none; }
-        .upload-section { border: 2px dashed #ccc; padding: 40px 30px; border-radius: 10px; background-color: #fafafa; display: none; /* 로그인 전에는 업로드 영역 숨김 */ }
+        .upload-section { border: 2px dashed #ccc; padding: 40px 30px; border-radius: 10px; background-color: #fafafa; display: none; }
         .file-list { list-style: none; padding: 0; margin: 20px 0 0; text-align: left; }
         .file-list li { background: white; border: 1px solid #ddd; padding: 12px; margin-bottom: 8px; border-radius: 5px; display: flex; justify-content: space-between; }
         #auth-status { margin-bottom: 20px; font-weight: bold; color: #d93025; }
+        .log-box { margin-top: 20px; padding: 15px; background: #eee; border-radius: 5px; text-align: left; font-family: monospace; font-size: 0.85rem; display: none; white-space: pre-wrap; word-wrap: break-word;}
     </style>
 </head>
 <body>
@@ -38,52 +38,53 @@
         <ul class="file-list" id="fileList"></ul>
         <button class="btn-submit" id="submitBtn" onclick="handleSubmit()">Submit</button>
     </div>
+
+    <div class="log-box" id="logBox"></div>
 </div>
 
 <script>
-    // [설정값] DocuSign Admin에서 발급받은 정보로 변경하세요!
     const CLIENT_ID = "62fe74d2-f89f-4842-b255-17c3b9c4a117"; 
-    const REDIRECT_URI = window.location.href.split('#')[0]; // 현재 페이지 주소
-    const ENVIRONMENT = "account-d.docusign.com"; // 개발용 (운영은 account.docusign.com)
+    const ACCOUNT_ID = "61c279f3-3001-436e-9c14-e453cb09f1b3"; // 스니펫에서 추출한 Account ID
+    const REDIRECT_URI = window.location.href.split('#')[0]; 
+    const ENVIRONMENT = "account-d.docusign.com"; 
 
     let accessToken = null;
+    let jobCounter = 1; // Job 이름 뒤에 붙을 숫자 카운터
 
-    // 1. 페이지 로드 시 URL에서 토큰 확인
+    // 페이지 로드 시 토큰 확인
     window.onload = function() {
-        // DocuSign에서 돌아왔을 때 주소창의 # 뒤에 있는 값들을 파싱
         const hash = window.location.hash.substring(1);
         const params = new URLSearchParams(hash);
         
         if (params.has("access_token")) {
             accessToken = params.get("access_token");
-            
-            // 토큰을 얻었으니 UI 변경
             document.getElementById('auth-status').innerText = "✅ 로그인 성공! (Token 확보됨)";
             document.getElementById('auth-status').style.color = "var(--ds-success)";
             document.getElementById('loginBtn').style.display = "none";
             document.getElementById('uploadSection').style.display = "block";
-            
-            // URL을 깔끔하게 정리 (선택사항)
             window.history.replaceState(null, null, window.location.pathname);
         }
     };
 
-    // 2. DocuSign 로그인 페이지로 이동
+    // 로그인 이동
     function loginWithDocuSign() {
-        if(CLIENT_ID === "") {
-            alert("코드 내에 CLIENT_ID를 먼저 입력해주세요!");
-            return;
-        }
-
-        // Navigator 관련 Scope가 필요할 수 있습니다. (예: signature navigator 등)
         const scope = "signature adm_store_unified_repo_read adm_store_unified_repo_write models_read document_uploader_read document_uploader_write public_dms_document_read"; 
-        
-        const authUrl = `https://${ENVIRONMENT}/oauth/auth?response_type=token&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=${scope}`;
-        
-        window.location.href = authUrl; // 페이지 이동
+        const authUrl = `https://${ENVIRONMENT}/oauth/auth?response_type=token&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=${encodeURIComponent(scope)}`;
+        window.location.href = authUrl; 
     }
 
-    // 파일 선택 및 리스트 렌더링 로직 (이전과 동일)
+    // Job 이름 생성기 (YYYYMMDD001 형식)
+    function generateJobName() {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        const counterStr = String(jobCounter).padStart(3, '0');
+        jobCounter++; // 다음 번 호출을 위해 카운터 1 증가
+        return `${yyyy}${mm}${dd}${counterStr}`;
+    }
+
+    // 파일 선택
     let selectedFiles = [];
     function triggerFileInput() { document.getElementById('fileInput').click(); }
     function handleFileSelect(event) {
@@ -103,17 +104,76 @@
         }
     }
 
-    // 3. Submit 클릭 시 실제 API 호출 로직 뼈대
+    // 화면에 로그를 찍어주는 헬퍼 함수
+    function logToScreen(message) {
+        const logBox = document.getElementById('logBox');
+        logBox.style.display = 'block';
+        logBox.innerHTML += message + "\n";
+    }
+
+    // Submit 버튼 클릭 (1단계 API 호출)
     async function handleSubmit() {
-        if (!accessToken) {
-            alert("토큰이 없습니다. 다시 로그인해주세요.");
-            return;
+        if (!accessToken) { alert("토큰이 없습니다."); return; }
+        if (selectedFiles.length === 0) return;
+
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.disabled = true;
+        submitBtn.innerText = "Processing...";
+        document.getElementById('logBox').innerHTML = ""; // 로그 초기화
+
+        try {
+            const jobName = generateJobName();
+            const expectedNumber = selectedFiles.length; // 실제 첨부한 파일 갯수
+            
+            logToScreen(`[Step 1] Creating Upload Job...\n - Job Name: ${jobName}\n - Files: ${expectedNumber}`);
+
+            // 1. 헤더 설정
+            const myHeaders = new Headers();
+            myHeaders.append("Authorization", `Bearer ${accessToken}`);
+            myHeaders.append("Content-Type", "application/json");
+
+            // 2. 바디 설정
+            const raw = JSON.stringify({
+                "agreement_set_ids": [],
+                "expected_number_of_docs": expectedNumber,
+                "job_name": jobName,
+                "language": "en-US"
+            });
+
+            // 3. 호출 옵션
+            const requestOptions = {
+                method: "POST",
+                headers: myHeaders,
+                body: raw,
+                redirect: "follow"
+            };
+
+            const url = `https://api-d.docusign.com/v1/accounts/${ACCOUNT_ID}/upload/jobs`;
+            
+            // 4. API Fetch 실행
+            const response = await fetch(url, requestOptions);
+            const result = await response.json(); // 응답을 JSON 객체로 파싱
+            
+            console.log("[Step 1 Response]:", result);
+
+            // 5. 응답에서 Job ID 추출 (API 응답 필드명에 따라 id 또는 job_id 일 수 있음)
+            const createdJobId = result.id || result.job_id || result.jobId;
+
+            if (!createdJobId) {
+                throw new Error("Job ID를 찾을 수 없습니다. 응답 내용: " + JSON.stringify(result));
+            }
+
+            logToScreen(`✅ [Step 1 Success] Job ID 생성 완료: ${createdJobId}`);
+            
+            // TODO: 여기서 2단계 호출을 이어서 진행합니다.
+
+        } catch (error) {
+            console.error("API Error:", error);
+            logToScreen(`❌ [Error] ${error.message}`);
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerText = "Submit";
         }
-        
-        console.log("획득한 토큰으로 API를 호출합니다:", accessToken);
-        // 여기서부터 Postman에서 확인하신 Fetch 코드가 들어가게 됩니다!
-        // headers에 'Authorization': `Bearer ${accessToken}` 가 들어갑니다.
-        alert("콘솔창(F12)을 확인하세요. API 호출 준비 완료!");
     }
 </script>
 
