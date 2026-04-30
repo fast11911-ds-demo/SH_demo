@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>나의 로컬 목업 사이트</title>
+    <style>
+        /* 기본 스타일 설정 */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f4f7f6;
+        }
+
+        /* 내비게이션 바 */
+        header {
+            width: 100%;
+            background-color: #333;
+            color: white;
+            padding: 1rem 0;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        /* 메인 콘텐츠 영역 */
+        main {
+            max-width: 800px;
+            width: 90%;
+            margin-top: 50px;
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+
+        h1 { color: #2c3e50; }
+        p { color: #7f8c8d; line-height: 1.6; }
+
+        /* 버튼 스타일 */
+        .cta-button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+            margin-top: 20px;
+        }
+
+        .cta-button:hover { background-color: #2980b9; }
+
+        /* 간단한 대화형 알림창 */
+        #status {
+            margin-top: 20px;
+            font-weight: bold;
+            color: #27ae60;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h2>Project Mockup</h2>
+    </header>
+
+    <main>
+        <h1>환영합니다! 👋</h1>
+        <p>이것은 로컬에서 즉시 확인 가능한 웹사이트 목업 예시입니다.<br> 
+           디자인 구성 요소나 기능을 여기에서 바로 테스트해 볼 수 있습니다.</p>
+        
+        <button class="cta-button" onclick="showMessage()">작동 확인하기</button>
+        <p id="status"></p>
+    </main>
+
+    <script>
+        function showMessage() {
+            const status = document.getElementById('status');
+            status.innerText = "버튼이 성공적으로 작동했습니다! 🚀";
+        }
+    </script>
+
+</body>
+</html>
