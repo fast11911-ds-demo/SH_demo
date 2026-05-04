@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DocuSign Navigator Mockup - API Step 1 (Vercel)</title>
+    <title>DocuSign Navigator Mockup - API Step 1 & 2</title>
     <style>
         :root { --ds-blue: #09357B; --ds-light-blue: #E6F0FF; --ds-success: #2e8b57; --ds-text: #333333; }
         body { font-family: 'Segoe UI', sans-serif; margin: 0; background-color: #f8f9fa; color: var(--ds-text); display: flex; justify-content: center; align-items: center; min-height: 100vh; }
@@ -50,7 +50,6 @@
     const ENVIRONMENT = "account-d.docusign.com"; 
 
     let accessToken = null;
-    let jobCounter = 1; // Job 이름 생성을 위한 카운터
 
     // 1. 페이지 로드 시 URL에서 토큰 확인
     window.onload = function() {
@@ -59,14 +58,10 @@
         
         if (params.has("access_token")) {
             accessToken = params.get("access_token");
-            
-            // 토큰 확보 시 UI 업데이트
             document.getElementById('auth-status').innerText = "✅ 로그인 성공! (Token 확보됨)";
             document.getElementById('auth-status').style.color = "var(--ds-success)";
             document.getElementById('loginBtn').style.display = "none";
             document.getElementById('uploadSection').style.display = "block";
-            
-            // URL 정리
             window.history.replaceState(null, null, window.location.pathname);
         }
     };
@@ -78,15 +73,18 @@
         window.location.href = authUrl; 
     }
 
-    // 3. Job 이름 동적 생성 (YYYYMMDD001 형식)
+    // [업데이트] 3. Job 이름 동적 생성 (YYYYMMDD + 4자리 난수 형식)
     function generateJobName() {
         const today = new Date();
         const yyyy = today.getFullYear();
         const mm = String(today.getMonth() + 1).padStart(2, '0');
         const dd = String(today.getDate()).padStart(2, '0');
-        const counterStr = String(jobCounter).padStart(3, '0');
-        jobCounter++; 
-        return `${yyyy}${mm}${dd}${counterStr}`;
+        
+        // 0000에서 9999 사이의 4자리 난수 생성
+        const randomNum = Math.floor(Math.random() * 10000);
+        const randomStr = String(randomNum).padStart(4, '0');
+        
+        return `${yyyy}${mm}${dd}${randomStr}`;
     }
 
     // 4. 파일 선택 UI 핸들링
@@ -116,7 +114,7 @@
         logBox.innerHTML += message + "\n";
     }
 
-    // 6. Submit 버튼 클릭 - Step 1: Bulk Upload Job 생성 API 호출 (Vercel Serverless Function 경유)
+    // 6. Submit 버튼 클릭 - Step 1(Job 생성) & Step 2(Binary 업로드) 실행
     async function handleSubmit() {
         if (!accessToken) { alert("토큰이 없습니다."); return; }
         if (selectedFiles.length === 0) return;
@@ -125,25 +123,22 @@
         submitBtn.disabled = true;
         submitBtn.innerText = "Processing...";
         const logBox = document.getElementById('logBox');
-        logBox.innerHTML = ""; // 로그 초기화
+        logBox.innerHTML = ""; 
         logBox.style.display = 'block';
 
         try {
+            // ==========================================
+            // [Step 1] Bulk Upload Job 생성 (Vercel 경유)
+            // ==========================================
             const jobName = generateJobName();
             const expectedNumber = selectedFiles.length; 
             
-            logToScreen(`[Step 1] Creating Bulk Upload Job via Vercel...`);
-            logToScreen(` - Job Name: ${jobName}\n - Files count: ${expectedNumber}`);
+            logToScreen(`[Step 1] Job 생성 요청 중... (파일명: ${jobName})`);
 
-            // [변경점] 직접 DocuSign을 호출하지 않고, 내 Vercel API를 호출합니다.
-            const url = `/api/createJob`;
-
-            // [변경점] Vercel API가 요구하는 형식(req.body)에 맞춰 데이터를 보냅니다.
-            const requestOptions = {
+            const step1Url = `/api/createJob`;
+            const step1Options = {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     token: accessToken,
                     accountId: ACCOUNT_ID,
@@ -156,40 +151,61 @@
                 })
             };
             
-            let response;
-            try {
-                response = await fetch(url, requestOptions);
-            } catch (networkError) {
-                throw new Error("Vercel 서버리스 함수 통신 에러가 발생했습니다.\n(상세: " + networkError.message + ")");
+            const response1 = await fetch(step1Url, step1Options);
+            if (!response1.ok) {
+                const err = await response1.text();
+                throw new Error(`Step 1 서버 오류: ${err}`);
             }
 
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`서버 응답 오류 (HTTP ${response.status})\n에러 상세: ${errorText}`);
+            const result1 = await response1.json();
+            console.log("[Step 1 API Response]:", result1);
+
+            const createdJobId = result1.id || result1.job_id || result1.bulkJobId;
+            const uploadUrls = result1.upload_urls || result1.uploadUrls || (result1.documents && result1.documents.map(d => d.upload_url));
+
+            if (!createdJobId || !uploadUrls || uploadUrls.length === 0) {
+                throw new Error("Job ID 또는 Upload URL을 찾을 수 없습니다.");
             }
 
-            const result = await response.json();
-            console.log("[Step 1 API Response]:", result);
-
-            // Job ID 추출
-            const createdJobId = result.id || result.job_id || result.bulkJobId;
-
-            if (!createdJobId) {
-                logToScreen("\n⚠️ 정상적으로 통신되었으나 응답 내용에서 Job ID를 찾을 수 없습니다.");
-                logToScreen("응답 데이터:\n" + JSON.stringify(result, null, 2));
-                return; 
-            }
-
-            logToScreen(`\n✅ [Step 1 Success] Job 생성 완료!`);
-            logToScreen(` - Job ID: ${createdJobId}`);
+            logToScreen(`✅ [Step 1 완료] Job ID: ${createdJobId}`);
             
-            window.currentJobId = createdJobId;
+            // ==========================================
+            // [Step 2] 발급된 URL로 문서 실물 전송 (Binary PUT)
+            // ==========================================
+            logToScreen(`\n[Step 2] 문서 실물 업로드 시작...`);
 
-            logToScreen(`\n--> 다음 API 콜(Step 2)을 대기 중입니다...`);
+            for (let i = 0; i < selectedFiles.length; i++) {
+                const file = selectedFiles[i];
+                const uploadUrl = uploadUrls[i];
+
+                if (!uploadUrl) {
+                    logToScreen(`❌ ${file.name}에 매핑될 URL이 없습니다.`);
+                    continue;
+                }
+
+                logToScreen(` ⏳ 전송 중: ${file.name}...`);
+
+                const putResponse = await fetch(uploadUrl, {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": file.type || "application/octet-stream"
+                    },
+                    body: file 
+                });
+
+                if (!putResponse.ok) {
+                    throw new Error(`파일 업로드 실패 (HTTP ${putResponse.status})`);
+                }
+
+                logToScreen(` ✅ 완료: ${file.name}`);
+            }
+
+            logToScreen(`\n🎉 [Step 2 완료] 모든 문서가 클라우드에 전송되었습니다!`);
+            logToScreen(`\n--> 최종 승인(Step 3)을 대기 중입니다...`);
 
         } catch (error) {
             console.error("API Error:", error);
-            logToScreen(`\n❌ [에러 발생]\n${error.message}`);
+            logToScreen(`\n❌ [에러 발생] ${error.message}`);
         } finally {
             submitBtn.disabled = false;
             submitBtn.innerText = "Submit";
