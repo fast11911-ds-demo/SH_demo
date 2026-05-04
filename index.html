@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DocuSign Navigator Mockup - API Step 1</title>
+    <title>DocuSign Navigator Mockup - API Step 1 (Vercel)</title>
     <style>
         :root { --ds-blue: #09357B; --ds-light-blue: #E6F0FF; --ds-success: #2e8b57; --ds-text: #333333; }
         body { font-family: 'Segoe UI', sans-serif; margin: 0; background-color: #f8f9fa; color: var(--ds-text); display: flex; justify-content: center; align-items: center; min-height: 100vh; }
@@ -116,7 +116,7 @@
         logBox.innerHTML += message + "\n";
     }
 
-    // 6. Submit 버튼 클릭 - Step 1: Bulk Upload Job 생성 API 호출
+    // 6. Submit 버튼 클릭 - Step 1: Bulk Upload Job 생성 API 호출 (Vercel Serverless Function 경유)
     async function handleSubmit() {
         if (!accessToken) { alert("토큰이 없습니다."); return; }
         if (selectedFiles.length === 0) return;
@@ -132,34 +132,35 @@
             const jobName = generateJobName();
             const expectedNumber = selectedFiles.length; 
             
-            logToScreen(`[Step 1] Creating Bulk Upload Job...`);
+            logToScreen(`[Step 1] Creating Bulk Upload Job via Vercel...`);
             logToScreen(` - Job Name: ${jobName}\n - Files count: ${expectedNumber}`);
 
-            const myHeaders = new Headers();
-            myHeaders.append("Authorization", `Bearer ${accessToken}`);
-            myHeaders.append("Content-Type", "application/json");
+            // [변경점] 직접 DocuSign을 호출하지 않고, 내 Vercel API를 호출합니다.
+            const url = `/api/createJob`;
 
-            const raw = JSON.stringify({
-                "agreement_set_ids": [],
-                "expected_number_of_docs": expectedNumber,
-                "job_name": jobName,
-                "language": "en-US"
-            });
-
+            // [변경점] Vercel API가 요구하는 형식(req.body)에 맞춰 데이터를 보냅니다.
             const requestOptions = {
                 method: "POST",
-                headers: myHeaders,
-                body: raw,
-                redirect: "follow"
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    token: accessToken,
+                    accountId: ACCOUNT_ID,
+                    bodyData: {
+                        "agreement_set_ids": [],
+                        "expected_number_of_docs": expectedNumber,
+                        "job_name": jobName,
+                        "language": "en-US"
+                    }
+                })
             };
-
-            const url = `https://api-d.docusign.com/v1/accounts/${ACCOUNT_ID}/upload/jobs`;
             
             let response;
             try {
                 response = await fetch(url, requestOptions);
             } catch (networkError) {
-                throw new Error("네트워크 또는 CORS 통신 에러가 발생했습니다.\n(상세: " + networkError.message + ")");
+                throw new Error("Vercel 서버리스 함수 통신 에러가 발생했습니다.\n(상세: " + networkError.message + ")");
             }
 
             if (!response.ok) {
@@ -170,7 +171,7 @@
             const result = await response.json();
             console.log("[Step 1 API Response]:", result);
 
-            // Job ID 추출 (API 응답 필드명에 맞게 유연하게 대처)
+            // Job ID 추출
             const createdJobId = result.id || result.job_id || result.bulkJobId;
 
             if (!createdJobId) {
@@ -182,7 +183,6 @@
             logToScreen(`\n✅ [Step 1 Success] Job 생성 완료!`);
             logToScreen(` - Job ID: ${createdJobId}`);
             
-            // 전역 변수로 Job ID를 저장해두어 다음 스텝에서 사용할 수 있게 합니다.
             window.currentJobId = createdJobId;
 
             logToScreen(`\n--> 다음 API 콜(Step 2)을 대기 중입니다...`);
