@@ -20,11 +20,10 @@
         .file-list li { background: white; border: 1px solid #ddd; padding: 12px; margin-bottom: 8px; border-radius: 5px; display: flex; justify-content: space-between; font-weight: 500; }
         #auth-status { margin-bottom: 20px; font-weight: bold; color: #d93025; }
         
-        /* 📜 Log Box Styling */
         .log-box { margin-top: 20px; padding: 15px; background: #282a36; color: #f8f8f2; border-radius: 5px; text-align: left; font-family: monospace; font-size: 0.85rem; display: none; white-space: pre-wrap; word-wrap: break-word; line-height: 1.5; }
-        .log-highlight { color: #50fa7b; }
+        .log-highlight { color: #ffb86c; font-weight: bold; } /* 타이머를 위한 강조 색상 */
+        .log-success { color: #50fa7b; }
         
-        /* ✨ AI Insights UI Styling */
         .ai-results-wrapper { margin-top: 30px; text-align: left; display: none; }
         .ai-results-title { font-size: 1.5rem; color: var(--ds-blue); border-bottom: 2px solid var(--ds-light-blue); padding-bottom: 10px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
         .ai-doc-section { background: var(--ds-bg); border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
@@ -58,9 +57,7 @@
     <div class="log-box" id="logBox"></div>
 
     <div class="ai-results-wrapper" id="aiResultsWrapper">
-        <div class="ai-results-title">
-            ✨ AI Extracted Insights
-        </div>
+        <div class="ai-results-title">✨ AI Extracted Insights</div>
         <div id="aiCardsContainer"></div>
     </div>
 </div>
@@ -112,21 +109,46 @@
         }
     }
 
+    // 새 줄을 추가하는 기본 로그 함수
     function logToScreen(message) {
         const logBox = document.getElementById('logBox');
         logBox.style.display = 'block';
         logBox.innerHTML += message + "\n";
-        // Scroll to bottom of log
         logBox.scrollTop = logBox.scrollHeight;
     }
 
-    // JSON의 key 값(property_name)을 예쁜 텍스트로 변환해주는 함수
-    // 예: "total_agreement_value" -> "Total Agreement Value"
+    // [추가됨] 한 줄에서 텍스트만 바뀌는 동적 로그 컨테이너 생성 함수
+    function createDynamicLogElement() {
+        const logBox = document.getElementById('logBox');
+        logBox.style.display = 'block';
+        const dynamicLine = document.createElement('div');
+        dynamicLine.className = 'log-highlight'; // 노란색 하이라이트 클래스 적용
+        logBox.appendChild(dynamicLine);
+        logBox.scrollTop = logBox.scrollHeight;
+        return dynamicLine;
+    }
+
+    // 💡 [수정됨] 새 줄 추가 없이 카운트다운을 제자리에서 줄이는 로직 (60초)
+    const startCountdown = (seconds) => new Promise((resolve) => {
+        let counter = seconds;
+        const timerElement = createDynamicLogElement(); // 전용 로그 요소 생성
+        
+        const interval = setInterval(() => {
+            timerElement.innerText = `⏳ Waiting Docusign Navigator AI works, ${counter}seconds`;
+            counter--;
+            if (counter < 0) {
+                clearInterval(interval);
+                timerElement.innerText = `✅ AI Processing completed.`;
+                timerElement.className = 'log-success'; // 완료 시 초록색으로 변경
+                resolve();
+            }
+        }, 1000);
+    });
+
     function formatPropertyLabel(snakeStr) {
         return snakeStr.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
     }
 
-    // AI 데이터로 화면에 카드를 그리는 함수
     function renderAIInsights(fileName, aiDataArray) {
         const wrapper = document.getElementById('aiResultsWrapper');
         const container = document.getElementById('aiCardsContainer');
@@ -145,12 +167,10 @@
             const label = formatPropertyLabel(item.property_name);
             let value = item.current_value;
             
-            // 날짜 포맷팅 (T00:00:00 제거)
             if (typeof value === 'string' && value.includes('T00:00:00')) {
                 value = value.split('T')[0];
             }
 
-            // 값이 없거나 null인 경우 처리
             const displayValue = (value !== null && value !== "" && value !== undefined) 
                 ? value 
                 : `<span class="ai-empty">Not detected</span>`;
@@ -183,19 +203,6 @@
         reader.onerror = (error) => reject(error);
     });
 
-    // 💡 [Updated] 카운트다운 텍스트 변경
-    const startCountdown = (seconds) => new Promise((resolve) => {
-        let counter = seconds;
-        const interval = setInterval(() => {
-            logToScreen(`⏳ Waiting Docusign Navigator AI works, ${counter}seconds`);
-            counter--;
-            if (counter < 0) {
-                clearInterval(interval);
-                resolve();
-            }
-        }, 1000);
-    });
-
     async function handleSubmit() {
         if (!accessToken) { alert("No access token found."); return; }
         if (selectedFiles.length === 0) return;
@@ -207,7 +214,6 @@
         logBox.innerHTML = ""; 
         logBox.style.display = 'block';
         
-        // 초기화
         document.getElementById('aiResultsWrapper').style.display = 'none';
         document.getElementById('aiCardsContainer').innerHTML = '';
 
@@ -227,7 +233,7 @@
             const createdJobId = result1.id;
             const uploadUrls = result1._embedded.documents.map(doc => doc._actions.upload_document);
             const documentIds = result1._embedded.documents.map(doc => doc.id);
-            logToScreen(`<span class="log-highlight">✅ [Step 1 Complete] Job ID: ${createdJobId}</span>`);
+            logToScreen(`<span class="log-success">✅ [Step 1 Complete] Job ID: ${createdJobId}</span>`);
             
             // [Step 2] Upload Files
             logToScreen(`\n[Step 2] Uploading documents...`);
@@ -250,13 +256,13 @@
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ token: accessToken, accountId: ACCOUNT_ID, jobId: createdJobId })
             });
-            logToScreen(`<span class="log-highlight">✅ [Step 3 Complete] Job finalized.</span>`);
+            logToScreen(`<span class="log-success">✅ [Step 3 Complete] Job finalized.</span>`);
 
             // [Step 4] AI Extraction
             logToScreen(`\n[Step 4] Starting AI Metadata Extraction...`);
             
-            // 카운트다운 실행 (Waiting Docusign Navigator AI works, xxseconds)
-            await startCountdown(40); 
+            // 💡 60초 대기 타이머 호출 (한 줄 업데이트 방식)
+            await startCountdown(60); 
 
             logToScreen(`\n🔍 Fetching AI Results...`);
             
@@ -272,9 +278,8 @@
                 
                 const result4 = await response4.json();
                 
-                // 에러 없이 data 배열이 존재한다면 화면에 예쁘게 렌더링합니다.
                 if (result4 && result4.data) {
-                    logToScreen(`<span class="log-highlight"> ✅ AI Data extracted for: ${fileName}</span>`);
+                    logToScreen(`<span class="log-success"> ✅ AI Data extracted for: ${fileName}</span>`);
                     renderAIInsights(fileName, result4.data);
                 } else {
                     logToScreen(` ⚠️ No AI data found for: ${fileName}`);
