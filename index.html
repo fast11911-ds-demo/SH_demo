@@ -21,7 +21,7 @@
         #auth-status { margin-bottom: 20px; font-weight: bold; color: #d93025; }
         
         .log-box { margin-top: 20px; padding: 15px; background: #282a36; color: #f8f8f2; border-radius: 5px; text-align: left; font-family: monospace; font-size: 0.85rem; display: none; white-space: pre-wrap; word-wrap: break-word; line-height: 1.5; }
-        .log-highlight { color: #ffb86c; font-weight: bold; } /* 타이머를 위한 강조 색상 */
+        .log-highlight { color: #ffb86c; font-weight: bold; } 
         .log-success { color: #50fa7b; }
         
         .ai-results-wrapper { margin-top: 30px; text-align: left; display: none; }
@@ -109,7 +109,6 @@
         }
     }
 
-    // 새 줄을 추가하는 기본 로그 함수
     function logToScreen(message) {
         const logBox = document.getElementById('logBox');
         logBox.style.display = 'block';
@@ -117,29 +116,27 @@
         logBox.scrollTop = logBox.scrollHeight;
     }
 
-    // [추가됨] 한 줄에서 텍스트만 바뀌는 동적 로그 컨테이너 생성 함수
     function createDynamicLogElement() {
         const logBox = document.getElementById('logBox');
         logBox.style.display = 'block';
         const dynamicLine = document.createElement('div');
-        dynamicLine.className = 'log-highlight'; // 노란색 하이라이트 클래스 적용
+        dynamicLine.className = 'log-highlight'; 
         logBox.appendChild(dynamicLine);
         logBox.scrollTop = logBox.scrollHeight;
         return dynamicLine;
     }
 
-    // 💡 [수정됨] 새 줄 추가 없이 카운트다운을 제자리에서 줄이는 로직 (60초)
     const startCountdown = (seconds) => new Promise((resolve) => {
         let counter = seconds;
-        const timerElement = createDynamicLogElement(); // 전용 로그 요소 생성
+        const timerElement = createDynamicLogElement(); 
         
         const interval = setInterval(() => {
             timerElement.innerText = `⏳ Waiting Docusign Navigator AI works, ${counter}seconds`;
             counter--;
             if (counter < 0) {
                 clearInterval(interval);
-                timerElement.innerText = `✅ AI Processing completed.`;
-                timerElement.className = 'log-success'; // 완료 시 초록색으로 변경
+                timerElement.innerText = `✅ Timer completed. Checking AI status...`;
+                timerElement.className = 'log-success'; 
                 resolve();
             }
         }, 1000);
@@ -258,35 +255,64 @@
             });
             logToScreen(`<span class="log-success">✅ [Step 3 Complete] Job finalized.</span>`);
 
-            // [Step 4] AI Extraction
+            // [Step 4] AI Extraction (Polling Logic)
             logToScreen(`\n[Step 4] Starting AI Metadata Extraction...`);
             
-            // 💡 60초 대기 타이머 호출 (한 줄 업데이트 방식)
-            await startCountdown(60); 
+            // 💡 처리해야 할 문서 목록 초기화
+            let pendingDocs = documentIds.map((id, index) => ({ id: id, name: selectedFiles[index].name }));
+            let attempt = 1;
+            const MAX_ATTEMPTS = 10; // 무한루프 방지용 (최대 10분 대기)
 
-            logToScreen(`\n🔍 Fetching AI Results...`);
-            
-            for (let i = 0; i < documentIds.length; i++) {
-                const docId = documentIds[i];
-                const fileName = selectedFiles[i].name;
-
-                const response4 = await fetch(`/api/extractAiData`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ token: accessToken, accountId: ACCOUNT_ID, documentId: docId })
-                });
-                
-                const result4 = await response4.json();
-                
-                if (result4 && result4.data) {
-                    logToScreen(`<span class="log-success"> ✅ AI Data extracted for: ${fileName}</span>`);
-                    renderAIInsights(fileName, result4.data);
-                } else {
-                    logToScreen(` ⚠️ No AI data found for: ${fileName}`);
+            while (pendingDocs.length > 0 && attempt <= MAX_ATTEMPTS) {
+                if (attempt > 1) {
+                    logToScreen(`\n🔄 [Retry ${attempt}/${MAX_ATTEMPTS}] Retrying AI extraction for ${pendingDocs.length} document(s)...`);
                 }
+
+                // 60초 대기 (한 줄에서 카운트다운)
+                await startCountdown(60); 
+                logToScreen(`🔍 Fetching AI Results...`);
+                
+                let stillPendingDocs = [];
+
+                for (let i = 0; i < pendingDocs.length; i++) {
+                    const doc = pendingDocs[i];
+
+                    try {
+                        const response4 = await fetch(`/api/extractAiData`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ token: accessToken, accountId: ACCOUNT_ID, documentId: doc.id })
+                        });
+                        
+                        const result4 = await response4.json();
+                        
+                        // 결과가 정상적으로 리턴된 경우
+                        if (response4.ok && result4 && result4.data) {
+                            logToScreen(`<span class="log-success"> ✅ AI Data extracted for: ${doc.name}</span>`);
+                            renderAIInsights(doc.name, result4.data);
+                        } else {
+                            // 아직 처리 중인 경우 여전히 pending 목록에 넣음
+                            logToScreen(` ⚠️ Still processing AI data for: ${doc.name}. (Will retry)`);
+                            stillPendingDocs.push(doc);
+                        }
+                    } catch (err) {
+                        // 통신 에러 발생 시에도 다음 턴에 재시도
+                        logToScreen(` ⚠️ Network error checking ${doc.name}. (Will retry)`);
+                        stillPendingDocs.push(doc);
+                    }
+                }
+
+                // 처리가 덜 끝난 문서들로 큐를 업데이트
+                pendingDocs = stillPendingDocs;
+                attempt++;
             }
 
-            logToScreen(`\n🏆 [All Steps Complete] Everything is finished! Check the cards below.`);
+            // 10번을 다 돌았는데도 실패한 문서가 남아있다면
+            if (pendingDocs.length > 0) {
+                logToScreen(`\n❌ AI extraction timed out for ${pendingDocs.length} document(s) after ${MAX_ATTEMPTS} minutes.`);
+            } else {
+                logToScreen(`\n🏆 [All Steps Complete] Everything is finished! Check the cards below.`);
+            }
 
         } catch (error) {
             console.error("API Error:", error);
