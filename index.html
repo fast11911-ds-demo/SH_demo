@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DocuSign Navigator Mockup - API Step 1, 2 & 3</title>
+    <title>DocuSign Navigator Mockup - Full Flow with AI Insights</title>
     <style>
-        :root { --ds-blue: #09357B; --ds-light-blue: #E6F0FF; --ds-success: #2e8b57; --ds-text: #333333; }
-        body { font-family: 'Segoe UI', sans-serif; margin: 0; background-color: #f8f9fa; color: var(--ds-text); display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-        .container { background: white; width: 90%; max-width: 650px; padding: 40px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center; margin: 40px 0; }
+        :root { --ds-blue: #09357B; --ds-light-blue: #E6F0FF; --ds-success: #2e8b57; --ds-text: #333333; --ds-bg: #f8f9fa; }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; background-color: var(--ds-bg); color: var(--ds-text); display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; padding: 40px 20px; }
+        .container { background: white; width: 100%; max-width: 800px; padding: 40px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center; margin-bottom: 40px; }
         .logo { font-weight: bold; font-size: 24px; color: var(--ds-blue); margin-bottom: 20px; }
         button { border: none; padding: 15px 30px; font-size: 1rem; font-weight: 600; border-radius: 4px; cursor: pointer; color: white; transition: background 0.2s; }
         .btn-login { background-color: #ffaa00; margin-bottom: 20px; color: #333; }
@@ -17,9 +17,25 @@
         .btn-submit { background-color: var(--ds-success); width: 100%; margin-top: 15px; display: none; }
         .upload-section { border: 2px dashed #ccc; padding: 40px 30px; border-radius: 10px; background-color: #fafafa; display: none; }
         .file-list { list-style: none; padding: 0; margin: 20px 0 0; text-align: left; }
-        .file-list li { background: white; border: 1px solid #ddd; padding: 12px; margin-bottom: 8px; border-radius: 5px; display: flex; justify-content: space-between; }
+        .file-list li { background: white; border: 1px solid #ddd; padding: 12px; margin-bottom: 8px; border-radius: 5px; display: flex; justify-content: space-between; font-weight: 500; }
         #auth-status { margin-bottom: 20px; font-weight: bold; color: #d93025; }
-        .log-box { margin-top: 20px; padding: 15px; background: #eee; border-radius: 5px; text-align: left; font-family: monospace; font-size: 0.85rem; display: none; white-space: pre-wrap; word-wrap: break-word;}
+        
+        /* 📜 Log Box Styling */
+        .log-box { margin-top: 20px; padding: 15px; background: #282a36; color: #f8f8f2; border-radius: 5px; text-align: left; font-family: monospace; font-size: 0.85rem; display: none; white-space: pre-wrap; word-wrap: break-word; line-height: 1.5; }
+        .log-highlight { color: #50fa7b; }
+        
+        /* ✨ AI Insights UI Styling */
+        .ai-results-wrapper { margin-top: 30px; text-align: left; display: none; }
+        .ai-results-title { font-size: 1.5rem; color: var(--ds-blue); border-bottom: 2px solid var(--ds-light-blue); padding-bottom: 10px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+        .ai-doc-section { background: var(--ds-bg); border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+        .ai-doc-header { font-size: 1.1rem; font-weight: bold; color: #333; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
+        .ai-badge { background: linear-gradient(45deg, #8b5cf6, #3b82f6); color: white; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; }
+        .ai-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px; }
+        .ai-card { background: white; padding: 15px; border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border-left: 4px solid var(--ds-blue); transition: transform 0.2s; }
+        .ai-card:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .ai-prop-name { font-size: 0.75rem; color: #666; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; }
+        .ai-prop-value { font-size: 1rem; font-weight: 600; color: #111; word-break: break-word; }
+        .ai-empty { color: #aaa; font-style: italic; font-weight: 400; }
     </style>
 </head>
 <body>
@@ -32,30 +48,32 @@
     <button class="btn-login" id="loginBtn" onclick="loginWithDocuSign()">Login with DocuSign</button>
 
     <div class="upload-section" id="uploadSection">
-        <p>Your uploaded agreements will save into Docusign Navigator.</p>
+        <p>Your uploaded agreements will be analyzed by AI.</p>
         <input type="file" id="fileInput" multiple style="display: none;" onchange="handleFileSelect(event)">
-        <button class="btn-upload" onclick="triggerFileInput()">Upload Agreement</button>
+        <button class="btn-upload" onclick="triggerFileInput()">Select Agreements</button>
         <ul class="file-list" id="fileList"></ul>
-        <button class="btn-submit" id="submitBtn" onclick="handleSubmit()">Submit</button>
+        <button class="btn-submit" id="submitBtn" onclick="handleSubmit()">Upload & Analyze</button>
     </div>
 
     <div class="log-box" id="logBox"></div>
+
+    <div class="ai-results-wrapper" id="aiResultsWrapper">
+        <div class="ai-results-title">
+            ✨ AI Extracted Insights
+        </div>
+        <div id="aiCardsContainer"></div>
+    </div>
 </div>
 
 <script>
-    // ==========================================
-    // 1. Settings
-    // ==========================================
     const CLIENT_ID = "62fe74d2-f89f-4842-b255-17c3b9c4a117"; 
     const ACCOUNT_ID = "61c279f3-3001-436e-9c14-e453cb09f1b3";
     const REDIRECT_URI = window.location.href.split('#')[0]; 
     const ENVIRONMENT = "account-d.docusign.com"; 
 
     let accessToken = null;
+    let selectedFiles = [];
 
-    // ==========================================
-    // 2. Auth & UI Handling
-    // ==========================================
     window.onload = function() {
         const hash = window.location.hash.substring(1);
         const params = new URLSearchParams(hash);
@@ -75,7 +93,6 @@
         window.location.href = authUrl; 
     }
 
-    let selectedFiles = [];
     function triggerFileInput() { document.getElementById('fileInput').click(); }
     
     function handleFileSelect(event) {
@@ -95,13 +112,59 @@
         }
     }
 
-    // ==========================================
-    // 3. Helper Functions
-    // ==========================================
     function logToScreen(message) {
         const logBox = document.getElementById('logBox');
         logBox.style.display = 'block';
         logBox.innerHTML += message + "\n";
+        // Scroll to bottom of log
+        logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    // JSON의 key 값(property_name)을 예쁜 텍스트로 변환해주는 함수
+    // 예: "total_agreement_value" -> "Total Agreement Value"
+    function formatPropertyLabel(snakeStr) {
+        return snakeStr.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+    }
+
+    // AI 데이터로 화면에 카드를 그리는 함수
+    function renderAIInsights(fileName, aiDataArray) {
+        const wrapper = document.getElementById('aiResultsWrapper');
+        const container = document.getElementById('aiCardsContainer');
+        wrapper.style.display = 'block';
+
+        let html = `
+            <div class="ai-doc-section">
+                <div class="ai-doc-header">
+                    <span>📄 ${fileName}</span>
+                    <span class="ai-badge">AI Analyzed</span>
+                </div>
+                <div class="ai-grid">
+        `;
+
+        aiDataArray.forEach(item => {
+            const label = formatPropertyLabel(item.property_name);
+            let value = item.current_value;
+            
+            // 날짜 포맷팅 (T00:00:00 제거)
+            if (typeof value === 'string' && value.includes('T00:00:00')) {
+                value = value.split('T')[0];
+            }
+
+            // 값이 없거나 null인 경우 처리
+            const displayValue = (value !== null && value !== "" && value !== undefined) 
+                ? value 
+                : `<span class="ai-empty">Not detected</span>`;
+
+            html += `
+                <div class="ai-card">
+                    <div class="ai-prop-name">${label}</div>
+                    <div class="ai-prop-value">${displayValue}</div>
+                </div>
+            `;
+        });
+
+        html += `</div></div>`;
+        container.innerHTML += html;
     }
 
     function generateJobName() {
@@ -120,9 +183,19 @@
         reader.onerror = (error) => reject(error);
     });
 
-    // ==========================================
-    // 4. Main API Call Logic
-    // ==========================================
+    // 💡 [Updated] 카운트다운 텍스트 변경
+    const startCountdown = (seconds) => new Promise((resolve) => {
+        let counter = seconds;
+        const interval = setInterval(() => {
+            logToScreen(`⏳ Waiting Docusign Navigator AI works, ${counter}seconds`);
+            counter--;
+            if (counter < 0) {
+                clearInterval(interval);
+                resolve();
+            }
+        }, 1000);
+    });
+
     async function handleSubmit() {
         if (!accessToken) { alert("No access token found."); return; }
         if (selectedFiles.length === 0) return;
@@ -133,113 +206,91 @@
         const logBox = document.getElementById('logBox');
         logBox.innerHTML = ""; 
         logBox.style.display = 'block';
+        
+        // 초기화
+        document.getElementById('aiResultsWrapper').style.display = 'none';
+        document.getElementById('aiCardsContainer').innerHTML = '';
 
         try {
-            // ----------------------------------------------------------
-            // [Step 1] Create Bulk Upload Job
-            // ----------------------------------------------------------
+            // [Step 1] Create Job
             const jobName = generateJobName();
-            const expectedNumber = selectedFiles.length; 
             logToScreen(`[Step 1] Requesting Job creation... (Job Name: ${jobName})`);
-
             const response1 = await fetch(`/api/createJob`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    token: accessToken,
-                    accountId: ACCOUNT_ID,
-                    bodyData: { "agreement_set_ids": [], "expected_number_of_docs": expectedNumber, "job_name": jobName, "language": "en-US" }
+                    token: accessToken, accountId: ACCOUNT_ID,
+                    bodyData: { "agreement_set_ids": [], "expected_number_of_docs": selectedFiles.length, "job_name": jobName, "language": "en-US" }
                 })
             });
             const result1 = await response1.json();
-            
-            // Extracting Job ID
             const createdJobId = result1.id;
+            const uploadUrls = result1._embedded.documents.map(doc => doc._actions.upload_document);
+            const documentIds = result1._embedded.documents.map(doc => doc.id);
+            logToScreen(`<span class="log-highlight">✅ [Step 1 Complete] Job ID: ${createdJobId}</span>`);
             
-            // [Update] Extracting Upload URLs AND Document IDs
-            let uploadUrls = [];
-            let documentIds = [];
-            
-            if (result1._embedded && result1._embedded.documents) {
-                result1._embedded.documents.forEach(doc => {
-                    uploadUrls.push(doc._actions.upload_document);
-                    documentIds.push(doc.id); // Storing the individual Document ID
-                });
-            }
-
-            if (!createdJobId || uploadUrls.length === 0) {
-                console.error("Full Response:", result1);
-                throw new Error("Failed to extract Job ID or Upload URLs.");
-            }
-
-            logToScreen(`✅ [Step 1 Complete] Job ID: ${createdJobId}`);
-            logToScreen(` - Number of documents created: ${documentIds.length}`);
-            
-            // Store IDs globally for Step 4
-            window.currentJobId = createdJobId;
-            window.uploadedDocumentIds = documentIds; 
-            
-            // ----------------------------------------------------------
-            // [Step 2] Upload Files to Azure Blob Storage
-            // ----------------------------------------------------------
-            logToScreen(`\n[Step 2] Starting document upload...`);
+            // [Step 2] Upload Files
+            logToScreen(`\n[Step 2] Uploading documents...`);
             for (let i = 0; i < selectedFiles.length; i++) {
-                const file = selectedFiles[i];
-                const uploadUrl = uploadUrls[i]; 
-                const docId = documentIds[i]; // Matching ID for the log
-
-                logToScreen(` ⏳ [${i+1}/${selectedFiles.length}] Uploading: ${file.name} (ID: ${docId})`);
-
-                const base64Data = await convertFileToBase64(file);
-                const putResponse = await fetch('/api/upload', {
+                const base64Data = await convertFileToBase64(selectedFiles[i]);
+                await fetch('/api/upload', {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        uploadUrl: uploadUrl, fileName: file.name, fileType: file.type, fileBase64: base64Data
+                        uploadUrl: uploadUrls[i], fileName: selectedFiles[i].name, fileType: selectedFiles[i].type, fileBase64: base64Data
                     })
                 });
-
-                if (!putResponse.ok) {
-                    const errorJson = await putResponse.json();
-                    throw new Error(`${file.name} upload failed - ${errorJson.details || errorJson.error}`);
-                }
-                logToScreen(` ✅ Success: ${file.name}`);
+                logToScreen(` ✅ Success: ${selectedFiles[i].name}`);
             }
-            logToScreen(`\n🎉 [Step 2 Complete] All documents uploaded.`);
 
-            // ----------------------------------------------------------
-            // [Step 3] Complete Job Approval
-            // ----------------------------------------------------------
+            // [Step 3] Complete Job
             logToScreen(`\n[Step 3] Requesting final completion...`);
-
-            const response3 = await fetch(`/api/completeJob`, {
+            await fetch(`/api/completeJob`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    token: accessToken,
-                    accountId: ACCOUNT_ID,
-                    jobId: createdJobId
-                })
+                body: JSON.stringify({ token: accessToken, accountId: ACCOUNT_ID, jobId: createdJobId })
             });
+            logToScreen(`<span class="log-highlight">✅ [Step 3 Complete] Job finalized.</span>`);
 
-            if (!response3.ok) {
-                const errJson = await response3.json();
-                throw new Error(`Final completion failed: ${errJson.details || "Unknown error"}`);
+            // [Step 4] AI Extraction
+            logToScreen(`\n[Step 4] Starting AI Metadata Extraction...`);
+            
+            // 카운트다운 실행 (Waiting Docusign Navigator AI works, xxseconds)
+            await startCountdown(40); 
+
+            logToScreen(`\n🔍 Fetching AI Results...`);
+            
+            for (let i = 0; i < documentIds.length; i++) {
+                const docId = documentIds[i];
+                const fileName = selectedFiles[i].name;
+
+                const response4 = await fetch(`/api/extractAiData`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ token: accessToken, accountId: ACCOUNT_ID, documentId: docId })
+                });
+                
+                const result4 = await response4.json();
+                
+                // 에러 없이 data 배열이 존재한다면 화면에 예쁘게 렌더링합니다.
+                if (result4 && result4.data) {
+                    logToScreen(`<span class="log-highlight"> ✅ AI Data extracted for: ${fileName}</span>`);
+                    renderAIInsights(fileName, result4.data);
+                } else {
+                    logToScreen(` ⚠️ No AI data found for: ${fileName}`);
+                }
             }
 
-            logToScreen(`\n🏆 [Final Complete] All processes finished successfully!`);
-            logToScreen(`Job ID: ${window.currentJobId}`);
-            logToScreen(`Document IDs stored: ${window.uploadedDocumentIds.join(', ')}`);
+            logToScreen(`\n🏆 [All Steps Complete] Everything is finished! Check the cards below.`);
 
         } catch (error) {
             console.error("API Error:", error);
-            logToScreen(`\n❌ [Error occurred] ${error.message}`);
+            logToScreen(`\n❌ [Error] ${error.message}`);
         } finally {
             submitBtn.disabled = false;
-            submitBtn.innerText = "Submit";
+            submitBtn.innerText = "Upload & Analyze";
         }
     }
 </script>
-
 </body>
 </html>
