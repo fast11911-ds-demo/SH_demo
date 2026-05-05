@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DocuSign Navigator Mockup - Final Integration</title>
+    <title>DocuSign Navigator Mockup - Full Automation</title>
     <style>
         :root { --ds-blue: #09357B; --ds-light-blue: #E6F0FF; --ds-success: #2e8b57; --ds-text: #333333; --ds-bg: #f8f9fa; }
         body { font-family: 'Segoe UI', sans-serif; margin: 0; background-color: var(--ds-bg); color: var(--ds-text); display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; padding: 40px 20px; }
@@ -19,9 +19,11 @@
         .file-list { list-style: none; padding: 0; margin: 20px 0 0; text-align: left; }
         .file-list li { background: white; border: 1px solid #ddd; padding: 12px; margin-bottom: 8px; border-radius: 5px; display: flex; justify-content: space-between; font-weight: 500; }
         #auth-status { margin-bottom: 20px; font-weight: bold; color: #d93025; }
+        
         .log-box { margin-top: 20px; padding: 15px; background: #282a36; color: #f8f8f2; border-radius: 5px; text-align: left; font-family: monospace; font-size: 0.85rem; display: none; white-space: pre-wrap; word-wrap: break-word; line-height: 1.5; }
         .log-highlight { color: #ffb86c; font-weight: bold; } 
         .log-success { color: #50fa7b; }
+        
         .ai-results-wrapper { margin-top: 30px; text-align: left; display: none; }
         .ai-results-title { font-size: 1.5rem; color: var(--ds-blue); border-bottom: 2px solid var(--ds-light-blue); padding-bottom: 10px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
         .ai-doc-section { background: var(--ds-bg); border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
@@ -128,7 +130,7 @@
             counter--;
             if (counter < 0) {
                 clearInterval(interval);
-                timerElement.innerText = `✅ Timer completed. Re-checking IDs...`;
+                timerElement.innerText = `✅ Timer completed. Checking status...`;
                 timerElement.className = 'log-success'; 
                 resolve();
             }
@@ -210,15 +212,13 @@
             });
             logToScreen(`<span class="log-success">✅ Job Completion requested.</span>`);
 
-            // [Step 3.5] Polling for Real Document IDs
-            logToScreen(`\n[Step 3.5] Waiting for Real Document IDs from Navigator...`);
-            let realDocumentIds = [];
-            let isComplete = false;
+            // [Step 3.5] Polling for Real Agreement IDs
+            logToScreen(`\n[Step 3.5] Waiting for Agreement IDs (Real Doc IDs)...`);
+            let pendingDocs = [];
+            let isJobComplete = false;
 
-            while (!isComplete) {
-                await startCountdown(60); // 1분 대기
-                logToScreen(`🔍 Checking Job status for real IDs...`);
-                
+            while (!isJobComplete) {
+                await startCountdown(60); 
                 const statusRes = await fetch(`/api/getJobStatus`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -227,36 +227,60 @@
                 const statusData = await statusRes.json();
                 
                 if (statusData.status === "COMPLETE") {
-                    // 💡 여기서 나오는 documents 아래의 id가 우리가 찾던 "진짜" ID입니다.
-                    realDocumentIds = statusData._embedded.documents.map(doc => doc.id);
-                    logToScreen(`<span class="log-success">✅ Real Document IDs acquired: ${realDocumentIds.length} docs found.</span>`);
-                    isComplete = true;
+                    // 💡 핵심: agreement_id를 추출하여 파일 이름과 매핑
+                    pendingDocs = statusData._embedded.documents.map(doc => ({
+                        id: doc.agreement_id,
+                        name: doc.file_name
+                    }));
+                    logToScreen(`<span class="log-success">✅ Agreement IDs acquired. Starting AI Extraction.</span>`);
+                    isJobComplete = true;
                 } else {
                     logToScreen(` ⚠️ Job status: ${statusData.status}. Still processing...`);
                 }
             }
 
-            // [Step 4] AI Extraction with realDocumentIds
-            logToScreen(`\n[Step 4] Fetching AI Extraction data...`);
-            for (let i = 0; i < realDocumentIds.length; i++) {
-                const docId = realDocumentIds[i];
-                const fileName = selectedFiles[i] ? selectedFiles[i].name : `Document ${i+1}`;
+            // [Step 4] Polling for AI Extraction Results
+            logToScreen(`\n[Step 4] Fetching AI Insight Data...`);
+            let attempt = 1;
 
-                const response4 = await fetch(`/api/extractAiData`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ token: accessToken, accountId: ACCOUNT_ID, documentId: docId })
-                });
-                const result4 = await response4.json();
-                
-                if (result4 && result4.data) {
-                    logToScreen(`<span class="log-success"> ✅ AI Data extracted for: ${fileName}</span>`);
-                    renderAIInsights(fileName, result4.data);
-                } else {
-                    logToScreen(` ⚠️ AI data not ready yet for: ${fileName}`);
+            while (pendingDocs.length > 0) {
+                if (attempt > 1) {
+                    logToScreen(`\n🔄 [Attempt ${attempt}] Some data not ready. Retrying...`);
+                    await startCountdown(60); 
+                }
+
+                let stillPending = [];
+
+                for (const doc of pendingDocs) {
+                    logToScreen(` ⏳ Checking: ${doc.name}`);
+                    const res4 = await fetch(`/api/extractAiData`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ token: accessToken, accountId: ACCOUNT_ID, documentId: doc.id })
+                    });
+                    const result4 = await res4.json();
+                    
+                    // 💡 데이터가 존재하고 data 배열에 내용이 있을 때만 성공 처리
+                    if (res4.ok && result4 && result4.data && result4.data.length > 0) {
+                        logToScreen(`<span class="log-success"> ✅ AI Data extracted: ${doc.name}</span>`);
+                        renderAIInsights(doc.name, result4.data);
+                    } else {
+                        logToScreen(` ⚠️ AI still working on: ${doc.name}`);
+                        stillPending.push(doc);
+                    }
+                }
+
+                pendingDocs = stillPending;
+                attempt++;
+                if (attempt > 15) { // 최대 15분 안전장치
+                    logToScreen(`\n❌ Timeout: Some documents took too long.`);
+                    break;
                 }
             }
-            logToScreen(`\n🏆 [All Steps Complete]`);
+
+            if (pendingDocs.length === 0) {
+                logToScreen(`\n🏆 [Final Success] All documents analyzed!`);
+            }
 
         } catch (error) {
             logToScreen(`\n❌ [Error] ${error.message}`);
