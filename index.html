@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DocuSign Navigator Mockup - Full Flow (Debug Mode)</title>
+    <title>DocuSign Navigator Mockup - Final Integration</title>
     <style>
         :root { --ds-blue: #09357B; --ds-light-blue: #E6F0FF; --ds-success: #2e8b57; --ds-text: #333333; --ds-bg: #f8f9fa; }
         body { font-family: 'Segoe UI', sans-serif; margin: 0; background-color: var(--ds-bg); color: var(--ds-text); display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; padding: 40px 20px; }
@@ -19,12 +19,9 @@
         .file-list { list-style: none; padding: 0; margin: 20px 0 0; text-align: left; }
         .file-list li { background: white; border: 1px solid #ddd; padding: 12px; margin-bottom: 8px; border-radius: 5px; display: flex; justify-content: space-between; font-weight: 500; }
         #auth-status { margin-bottom: 20px; font-weight: bold; color: #d93025; }
-        
         .log-box { margin-top: 20px; padding: 15px; background: #282a36; color: #f8f8f2; border-radius: 5px; text-align: left; font-family: monospace; font-size: 0.85rem; display: none; white-space: pre-wrap; word-wrap: break-word; line-height: 1.5; }
         .log-highlight { color: #ffb86c; font-weight: bold; } 
         .log-success { color: #50fa7b; }
-        .log-debug { color: #8be9fd; font-style: italic; } /* 디버그용 텍스트 색상 */
-        
         .ai-results-wrapper { margin-top: 30px; text-align: left; display: none; }
         .ai-results-title { font-size: 1.5rem; color: var(--ds-blue); border-bottom: 2px solid var(--ds-light-blue); padding-bottom: 10px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
         .ai-doc-section { background: var(--ds-bg); border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
@@ -48,7 +45,6 @@
     <button class="btn-login" id="loginBtn" onclick="loginWithDocuSign()">Login with DocuSign</button>
 
     <div class="upload-section" id="uploadSection">
-        <p>Your uploaded agreements will be analyzed by AI.</p>
         <input type="file" id="fileInput" multiple style="display: none;" onchange="handleFileSelect(event)">
         <button class="btn-upload" onclick="triggerFileInput()">Select Agreements</button>
         <ul class="file-list" id="fileList"></ul>
@@ -68,7 +64,6 @@
     const ACCOUNT_ID = "61c279f3-3001-436e-9c14-e453cb09f1b3";
     const REDIRECT_URI = window.location.href.split('#')[0]; 
     const ENVIRONMENT = "account-d.docusign.com"; 
-    const API_DOMAIN = "api-d.docusign.com"; // API 호출을 위한 도메인 명시
 
     let accessToken = null;
     let selectedFiles = [];
@@ -78,7 +73,7 @@
         const params = new URLSearchParams(hash);
         if (params.has("access_token")) {
             accessToken = params.get("access_token");
-            document.getElementById('auth-status').innerText = "✅ Login successful! (Token acquired)";
+            document.getElementById('auth-status').innerText = "✅ Login successful!";
             document.getElementById('auth-status').style.color = "var(--ds-success)";
             document.getElementById('loginBtn').style.display = "none";
             document.getElementById('uploadSection').style.display = "block";
@@ -119,25 +114,21 @@
     }
 
     function createDynamicLogElement() {
-        const logBox = document.getElementById('logBox');
-        logBox.style.display = 'block';
         const dynamicLine = document.createElement('div');
         dynamicLine.className = 'log-highlight'; 
-        logBox.appendChild(dynamicLine);
-        logBox.scrollTop = logBox.scrollHeight;
+        document.getElementById('logBox').appendChild(dynamicLine);
         return dynamicLine;
     }
 
     const startCountdown = (seconds) => new Promise((resolve) => {
         let counter = seconds;
         const timerElement = createDynamicLogElement(); 
-        
         const interval = setInterval(() => {
             timerElement.innerText = `⏳ Waiting Docusign Navigator AI works, ${counter}seconds`;
             counter--;
             if (counter < 0) {
                 clearInterval(interval);
-                timerElement.innerText = `✅ Timer completed. Checking AI status...`;
+                timerElement.innerText = `✅ Timer completed. Re-checking IDs...`;
                 timerElement.className = 'log-success'; 
                 resolve();
             }
@@ -152,47 +143,16 @@
         const wrapper = document.getElementById('aiResultsWrapper');
         const container = document.getElementById('aiCardsContainer');
         wrapper.style.display = 'block';
-
-        let html = `
-            <div class="ai-doc-section">
-                <div class="ai-doc-header">
-                    <span>📄 ${fileName}</span>
-                    <span class="ai-badge">AI Analyzed</span>
-                </div>
-                <div class="ai-grid">
-        `;
-
+        let html = `<div class="ai-doc-section"><div class="ai-doc-header"><span>📄 ${fileName}</span><span class="ai-badge">AI Analyzed</span></div><div class="ai-grid">`;
         aiDataArray.forEach(item => {
             const label = formatPropertyLabel(item.property_name);
             let value = item.current_value;
-            
-            if (typeof value === 'string' && value.includes('T00:00:00')) {
-                value = value.split('T')[0];
-            }
-
-            const displayValue = (value !== null && value !== "" && value !== undefined) 
-                ? value 
-                : `<span class="ai-empty">Not detected</span>`;
-
-            html += `
-                <div class="ai-card">
-                    <div class="ai-prop-name">${label}</div>
-                    <div class="ai-prop-value">${displayValue}</div>
-                </div>
-            `;
+            if (typeof value === 'string' && value.includes('T00:00:00')) value = value.split('T')[0];
+            const displayValue = (value !== null && value !== "" && value !== undefined) ? value : `<span class="ai-empty">Not detected</span>`;
+            html += `<div class="ai-card"><div class="ai-prop-name">${label}</div><div class="ai-prop-value">${displayValue}</div></div>`;
         });
-
         html += `</div></div>`;
         container.innerHTML += html;
-    }
-
-    function generateJobName() {
-        const today = new Date();
-        const yyyy = today.getFullYear();
-        const mm = String(today.getMonth() + 1).padStart(2, '0');
-        const dd = String(today.getDate()).padStart(2, '0');
-        const randomStr = String(Math.floor(Math.random() * 10000)).padStart(4, '0');
-        return `${yyyy}${mm}${dd}${randomStr}`;
     }
 
     const convertFileToBase64 = (file) => new Promise((resolve, reject) => {
@@ -203,24 +163,20 @@
     });
 
     async function handleSubmit() {
-        if (!accessToken) { alert("No access token found."); return; }
-        if (selectedFiles.length === 0) return;
-
+        if (!accessToken) return;
         const submitBtn = document.getElementById('submitBtn');
         submitBtn.disabled = true;
         submitBtn.innerText = "Processing...";
         const logBox = document.getElementById('logBox');
-        logBox.innerHTML = ""; 
-        logBox.style.display = 'block';
-        
+        logBox.innerHTML = ""; logBox.style.display = 'block';
         document.getElementById('aiResultsWrapper').style.display = 'none';
         document.getElementById('aiCardsContainer').innerHTML = '';
 
         try {
             // [Step 1] Create Job
-            const jobName = generateJobName();
-            logToScreen(`[Step 1] Requesting Job creation... (Job Name: ${jobName})`);
-            const response1 = await fetch(`/api/createJob`, {
+            const jobName = `NAV_${Math.floor(Date.now()/1000)}`;
+            logToScreen(`[Step 1] Creating Job...`);
+            const res1 = await fetch(`/api/createJob`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -228,98 +184,81 @@
                     bodyData: { "agreement_set_ids": [], "expected_number_of_docs": selectedFiles.length, "job_name": jobName, "language": "en-US" }
                 })
             });
-            const result1 = await response1.json();
-            const createdJobId = result1.id;
+            const result1 = await res1.json();
+            const jobId = result1.id;
             const uploadUrls = result1._embedded.documents.map(doc => doc._actions.upload_document);
-            const documentIds = result1._embedded.documents.map(doc => doc.id);
-            logToScreen(`<span class="log-success">✅ [Step 1 Complete] Job ID: ${createdJobId}</span>`);
+            logToScreen(`<span class="log-success">✅ Job Created: ${jobId}</span>`);
             
-            // [Step 2] Upload Files
+            // [Step 2] Upload
             logToScreen(`\n[Step 2] Uploading documents...`);
             for (let i = 0; i < selectedFiles.length; i++) {
                 const base64Data = await convertFileToBase64(selectedFiles[i]);
                 await fetch('/api/upload', {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        uploadUrl: uploadUrls[i], fileName: selectedFiles[i].name, fileType: selectedFiles[i].type, fileBase64: base64Data
-                    })
+                    body: JSON.stringify({ uploadUrl: uploadUrls[i], fileName: selectedFiles[i].name, fileType: selectedFiles[i].type, fileBase64: base64Data })
                 });
                 logToScreen(` ✅ Success: ${selectedFiles[i].name}`);
             }
 
-            // [Step 3] Complete Job
-            logToScreen(`\n[Step 3] Requesting final completion...`);
+            // [Step 3] Complete
+            logToScreen(`\n[Step 3] Finalizing Job...`);
             await fetch(`/api/completeJob`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ token: accessToken, accountId: ACCOUNT_ID, jobId: createdJobId })
+                body: JSON.stringify({ token: accessToken, accountId: ACCOUNT_ID, jobId: jobId })
             });
-            logToScreen(`<span class="log-success">✅ [Step 3 Complete] Job finalized.</span>`);
+            logToScreen(`<span class="log-success">✅ Job Completion requested.</span>`);
 
-            // [Step 4] AI Extraction (Polling Logic & Debug)
-            logToScreen(`\n[Step 4] Starting AI Metadata Extraction...`);
-            
-            let pendingDocs = documentIds.map((id, index) => ({ id: id, name: selectedFiles[index].name }));
-            let attempt = 1;
-            const MAX_ATTEMPTS = 10; 
+            // [Step 3.5] Polling for Real Document IDs
+            logToScreen(`\n[Step 3.5] Waiting for Real Document IDs from Navigator...`);
+            let realDocumentIds = [];
+            let isComplete = false;
 
-            while (pendingDocs.length > 0 && attempt <= MAX_ATTEMPTS) {
-                if (attempt > 1) {
-                    logToScreen(`\n🔄 [Retry ${attempt}/${MAX_ATTEMPTS}] Retrying AI extraction...`);
-                }
-
-                await startCountdown(60); 
-                logToScreen(`🔍 Fetching AI Results...`);
+            while (!isComplete) {
+                await startCountdown(60); // 1분 대기
+                logToScreen(`🔍 Checking Job status for real IDs...`);
                 
-                let stillPendingDocs = [];
-
-                for (let i = 0; i < pendingDocs.length; i++) {
-                    const doc = pendingDocs[i];
-
-                    // 💡 [DEBUG] 화면에 타겟 URL을 파란색으로 명확하게 출력합니다.
-                    const expectedUrl = `https://${API_DOMAIN}/v1/accounts/${ACCOUNT_ID}/agreements/${doc.id}/ai/extractions`;
-                    logToScreen(`\n<span class="log-debug">🛠️ [Debug Target URL]</span>\n<span class="log-debug">${expectedUrl}</span>`);
-
-                    try {
-                        const response4 = await fetch(`/api/extractAiData`, {
-                            method: "POST", // Vercel 서버리스로 쏘는건 POST가 맞습니다
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ token: accessToken, accountId: ACCOUNT_ID, documentId: doc.id })
-                        });
-                        
-                        const result4 = await response4.json();
-                        
-                        // 💡 [DEBUG] 서버가 리턴해준 응답 JSON 전체를 화면에 출력합니다.
-                        logToScreen(`<span class="log-debug">📥 [Debug Server Response]</span>`);
-                        logToScreen(`<span class="log-debug">${JSON.stringify(result4, null, 2)}</span>`);
-                        
-                        // 성공적으로 data 배열이 들어왔고 비어있지 않을 때만 완료 처리
-                        if (response4.ok && result4 && result4.data && result4.data.length > 0) {
-                            logToScreen(`<span class="log-success"> ✅ AI Data extracted for: ${doc.name}</span>`);
-                            renderAIInsights(doc.name, result4.data);
-                        } else {
-                            logToScreen(` ⚠️ Still processing AI data for: ${doc.name}. (Will retry)`);
-                            stillPendingDocs.push(doc);
-                        }
-                    } catch (err) {
-                        logToScreen(` ⚠️ Network error checking ${doc.name}: ${err.message}. (Will retry)`);
-                        stillPendingDocs.push(doc);
-                    }
+                const statusRes = await fetch(`/api/getJobStatus`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ token: accessToken, accountId: ACCOUNT_ID, jobId: jobId })
+                });
+                const statusData = await statusRes.json();
+                
+                if (statusData.status === "COMPLETE") {
+                    // 💡 여기서 나오는 documents 아래의 id가 우리가 찾던 "진짜" ID입니다.
+                    realDocumentIds = statusData._embedded.documents.map(doc => doc.id);
+                    logToScreen(`<span class="log-success">✅ Real Document IDs acquired: ${realDocumentIds.length} docs found.</span>`);
+                    isComplete = true;
+                } else {
+                    logToScreen(` ⚠️ Job status: ${statusData.status}. Still processing...`);
                 }
-
-                pendingDocs = stillPendingDocs;
-                attempt++;
             }
 
-            if (pendingDocs.length > 0) {
-                logToScreen(`\n❌ AI extraction timed out for ${pendingDocs.length} document(s) after ${MAX_ATTEMPTS} minutes.`);
-            } else {
-                logToScreen(`\n🏆 [All Steps Complete] Everything is finished! Check the cards below.`);
+            // [Step 4] AI Extraction with realDocumentIds
+            logToScreen(`\n[Step 4] Fetching AI Extraction data...`);
+            for (let i = 0; i < realDocumentIds.length; i++) {
+                const docId = realDocumentIds[i];
+                const fileName = selectedFiles[i] ? selectedFiles[i].name : `Document ${i+1}`;
+
+                const response4 = await fetch(`/api/extractAiData`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ token: accessToken, accountId: ACCOUNT_ID, documentId: docId })
+                });
+                const result4 = await response4.json();
+                
+                if (result4 && result4.data) {
+                    logToScreen(`<span class="log-success"> ✅ AI Data extracted for: ${fileName}</span>`);
+                    renderAIInsights(fileName, result4.data);
+                } else {
+                    logToScreen(` ⚠️ AI data not ready yet for: ${fileName}`);
+                }
             }
+            logToScreen(`\n🏆 [All Steps Complete]`);
 
         } catch (error) {
-            console.error("API Error:", error);
             logToScreen(`\n❌ [Error] ${error.message}`);
         } finally {
             submitBtn.disabled = false;
