@@ -1,47 +1,3 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DocuSign Navigator Mockup - API Step 1 & 2 (Azure Blob)</title>
-    <style>
-        :root { --ds-blue: #09357B; --ds-light-blue: #E6F0FF; --ds-success: #2e8b57; --ds-text: #333333; }
-        body { font-family: 'Segoe UI', sans-serif; margin: 0; background-color: #f8f9fa; color: var(--ds-text); display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-        .container { background: white; width: 90%; max-width: 650px; padding: 40px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center; margin: 40px 0; }
-        .logo { font-weight: bold; font-size: 24px; color: var(--ds-blue); margin-bottom: 20px; }
-        button { border: none; padding: 15px 30px; font-size: 1rem; font-weight: 600; border-radius: 4px; cursor: pointer; color: white; transition: background 0.2s; }
-        .btn-login { background-color: #ffaa00; margin-bottom: 20px; color: #333; }
-        .btn-login:hover { background-color: #e69900; }
-        .btn-upload { background-color: var(--ds-blue); }
-        .btn-upload:hover { background-color: #06265a; }
-        .btn-submit { background-color: var(--ds-success); width: 100%; margin-top: 15px; display: none; }
-        .upload-section { border: 2px dashed #ccc; padding: 40px 30px; border-radius: 10px; background-color: #fafafa; display: none; }
-        .file-list { list-style: none; padding: 0; margin: 20px 0 0; text-align: left; }
-        .file-list li { background: white; border: 1px solid #ddd; padding: 12px; margin-bottom: 8px; border-radius: 5px; display: flex; justify-content: space-between; }
-        #auth-status { margin-bottom: 20px; font-weight: bold; color: #d93025; }
-        .log-box { margin-top: 20px; padding: 15px; background: #eee; border-radius: 5px; text-align: left; font-family: monospace; font-size: 0.85rem; display: none; white-space: pre-wrap; word-wrap: break-word;}
-    </style>
-</head>
-<body>
-
-<div class="container">
-    <div class="logo">DocuSign Navigator</div>
-    <h1>Welcome to Docusign Navigator</h1>
-
-    <div id="auth-status">🔒 Please login Docusign IAM.</div>
-    <button class="btn-login" id="loginBtn" onclick="loginWithDocuSign()">Login with DocuSign</button>
-
-    <div class="upload-section" id="uploadSection">
-        <p>Your uploaded agreements will save into Docusign Navigator.</p>
-        <input type="file" id="fileInput" multiple style="display: none;" onchange="handleFileSelect(event)">
-        <button class="btn-upload" onclick="triggerFileInput()">Upload Agreement</button>
-        <ul class="file-list" id="fileList"></ul>
-        <button class="btn-submit" id="submitBtn" onclick="handleSubmit()">Submit</button>
-    </div>
-
-    <div class="log-box" id="logBox"></div>
-</div>
-
 <script>
     // [설정값]
     const CLIENT_ID = "62fe74d2-f89f-4842-b255-17c3b9c4a117"; 
@@ -104,6 +60,14 @@
         logBox.innerHTML += message + "\n";
     }
 
+    // 💡 파일을 서버리스 함수로 보내기 위해 텍스트(Base64)로 변환해주는 헬퍼 함수
+    const convertFileToBase64 = (file) => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = (error) => reject(error);
+    });
+
     async function handleSubmit() {
         if (!accessToken) { alert("토큰이 없습니다."); return; }
         if (selectedFiles.length === 0) return;
@@ -117,7 +81,7 @@
 
         try {
             // ==========================================================
-            // [Step 1] Bulk Upload Job 생성 (Vercel 경유)
+            // [Step 1] Bulk Upload Job 생성
             // ==========================================================
             const jobName = generateJobName();
             const expectedNumber = selectedFiles.length; 
@@ -143,32 +107,26 @@
             const response1 = await fetch(step1Url, step1Options);
             const result1 = await response1.json();
             
-            // 1. Job ID 추출
             const createdJobId = result1.id;
-
-            // 2. [핵심 로직] 응답 JSON 구조에 맞춘 업로드 URL 배열 추출
             let uploadUrls = [];
             if (result1._embedded && result1._embedded.documents) {
-                // 문서 배열을 돌면서 각각의 upload_document 주소를 뽑아냅니다.
                 uploadUrls = result1._embedded.documents.map(doc => doc._actions.upload_document);
             }
 
             if (!createdJobId || uploadUrls.length === 0) {
-                console.error("전체 응답:", result1);
                 throw new Error("Job ID 또는 업로드 URL을 추출하지 못했습니다.");
             }
 
             logToScreen(`✅ [Step 1 완료] Job ID: ${createdJobId}`);
-            logToScreen(` - 발급된 URL 수: ${uploadUrls.length}개`);
             
             // ==========================================================
-            // [Step 2] 발급된 개별 URL로 파일 Binary 데이터 전송 (PUT)
+            // [Step 2] Vercel 프록시를 경유하여 파일 업로드
             // ==========================================================
-            logToScreen(`\n[Step 2] 문서 실물 업로드 시작 (Azure Storage) ...`);
+            logToScreen(`\n[Step 2] 문서 실물 업로드 시작 (Vercel 우회) ...`);
 
             for (let i = 0; i < selectedFiles.length; i++) {
                 const file = selectedFiles[i];
-                const uploadUrl = uploadUrls[i]; // 순서대로 1:1 매핑
+                const uploadUrl = uploadUrls[i]; 
 
                 if (!uploadUrl) {
                     logToScreen(`⚠️ ${file.name}에 대응하는 업로드 URL이 없습니다.`);
@@ -177,32 +135,32 @@
 
                 logToScreen(` ⏳ [${i+1}/${selectedFiles.length}] 전송 중: ${file.name}`);
 
-                // [핵심 로직] Azure Blob Storage 요구 헤더 추가
-                // 한글이나 특수문자 파일명이 에러를 일으키지 않도록 encodeURIComponent 사용
-                const encodedFileName = encodeURIComponent(file.name);
+                // 파일을 Vercel이 이해할 수 있게 Base64 텍스트로 변환
+                const base64Data = await convertFileToBase64(file);
 
-                const putResponse = await fetch(uploadUrl, {
-                    method: "PUT",
-                    headers: {
-                        "Content-Type": file.type || "application/octet-stream",
-                        "x-ms-meta-filename": encodedFileName, // JSON에 명시된 필수 헤더 1
-                        "x-ms-blob-type": "BlockBlob"          // JSON에 명시된 필수 헤더 2
-                    },
-                    body: file 
+                // 방금 만든 내 Vercel API('/api/upload')로 전송
+                const putResponse = await fetch('/api/upload', {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        uploadUrl: uploadUrl,
+                        fileName: file.name,
+                        fileType: file.type,
+                        fileBase64: base64Data
+                    })
                 });
 
                 if (!putResponse.ok) {
-                    const errorText = await putResponse.text();
-                    throw new Error(`${file.name} 업로드 실패 (HTTP ${putResponse.status}) - ${errorText}`);
+                    const errorJson = await putResponse.json();
+                    throw new Error(`${file.name} 업로드 실패 (HTTP ${putResponse.status}) - ${errorJson.details || errorJson.error}`);
                 }
 
                 logToScreen(` ✅ 성공: ${file.name}`);
             }
 
             logToScreen(`\n🎉 [Step 2 완료] 모든 문서가 클라우드에 전송되었습니다!`);
-            logToScreen(`\n--> 최종 승인(Step 3) 단계로 이동 가능합니다.`);
+            logToScreen(`\n--> 최종 승인(Step 3) 단계를 대기 중입니다...`);
 
-            // 다음 단계를 위해 전역 변수로 저장
             window.currentJobId = createdJobId;
 
         } catch (error) {
@@ -214,6 +172,3 @@
         }
     }
 </script>
-
-</body>
-</html>
