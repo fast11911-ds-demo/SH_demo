@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DocuSign Navigator Mockup - API Step 1 & 2</title>
+    <title>DocuSign Navigator Mockup - API Step 1 & 2 (Azure Blob)</title>
     <style>
         :root { --ds-blue: #09357B; --ds-light-blue: #E6F0FF; --ds-success: #2e8b57; --ds-text: #333333; }
         body { font-family: 'Segoe UI', sans-serif; margin: 0; background-color: #f8f9fa; color: var(--ds-text); display: flex; justify-content: center; align-items: center; min-height: 100vh; }
@@ -51,11 +51,9 @@
 
     let accessToken = null;
 
-    // 1. 페이지 로드 시 URL에서 토큰 확인
     window.onload = function() {
         const hash = window.location.hash.substring(1);
         const params = new URLSearchParams(hash);
-        
         if (params.has("access_token")) {
             accessToken = params.get("access_token");
             document.getElementById('auth-status').innerText = "✅ 로그인 성공! (Token 확보됨)";
@@ -66,28 +64,21 @@
         }
     };
 
-    // 2. DocuSign 로그인 페이지로 이동
     function loginWithDocuSign() {
         const scope = "signature adm_store_unified_repo_read adm_store_unified_repo_write models_read document_uploader_read document_uploader_write public_dms_document_read"; 
         const authUrl = `https://${ENVIRONMENT}/oauth/auth?response_type=token&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=${encodeURIComponent(scope)}`;
         window.location.href = authUrl; 
     }
 
-    // [업데이트] 3. Job 이름 동적 생성 (YYYYMMDD + 4자리 난수 형식)
     function generateJobName() {
         const today = new Date();
         const yyyy = today.getFullYear();
         const mm = String(today.getMonth() + 1).padStart(2, '0');
         const dd = String(today.getDate()).padStart(2, '0');
-        
-        // 0000에서 9999 사이의 4자리 난수 생성
-        const randomNum = Math.floor(Math.random() * 10000);
-        const randomStr = String(randomNum).padStart(4, '0');
-        
+        const randomStr = String(Math.floor(Math.random() * 10000)).padStart(4, '0');
         return `${yyyy}${mm}${dd}${randomStr}`;
     }
 
-    // 4. 파일 선택 UI 핸들링
     let selectedFiles = [];
     function triggerFileInput() { document.getElementById('fileInput').click(); }
     function handleFileSelect(event) {
@@ -107,14 +98,12 @@
         }
     }
 
-    // 5. 화면 로그 출력 헬퍼 함수
     function logToScreen(message) {
         const logBox = document.getElementById('logBox');
         logBox.style.display = 'block';
         logBox.innerHTML += message + "\n";
     }
 
-    // 6. Submit 버튼 클릭 - Step 1(Job 생성) & Step 2(Binary 업로드) 실행
     async function handleSubmit() {
         if (!accessToken) { alert("토큰이 없습니다."); return; }
         if (selectedFiles.length === 0) return;
@@ -127,15 +116,15 @@
         logBox.style.display = 'block';
 
         try {
-            // ==========================================
+            // ==========================================================
             // [Step 1] Bulk Upload Job 생성 (Vercel 경유)
-            // ==========================================
+            // ==========================================================
             const jobName = generateJobName();
             const expectedNumber = selectedFiles.length; 
             
             logToScreen(`[Step 1] Job 생성 요청 중... (파일명: ${jobName})`);
 
-            const step1Url = `/api/createJob`;
+            const step1Url = `/api/createJob`; 
             const step1Options = {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -152,56 +141,69 @@
             };
             
             const response1 = await fetch(step1Url, step1Options);
-            if (!response1.ok) {
-                const err = await response1.text();
-                throw new Error(`Step 1 서버 오류: ${err}`);
+            const result1 = await response1.json();
+            
+            // 1. Job ID 추출
+            const createdJobId = result1.id;
+
+            // 2. [핵심 로직] 응답 JSON 구조에 맞춘 업로드 URL 배열 추출
+            let uploadUrls = [];
+            if (result1._embedded && result1._embedded.documents) {
+                // 문서 배열을 돌면서 각각의 upload_document 주소를 뽑아냅니다.
+                uploadUrls = result1._embedded.documents.map(doc => doc._actions.upload_document);
             }
 
-            const result1 = await response1.json();
-            console.log("[Step 1 API Response]:", result1);
-
-            const createdJobId = result1.id || result1.job_id || result1.bulkJobId;
-            const uploadUrls = result1.upload_urls || result1.uploadUrls || (result1.documents && result1.documents.map(d => d.upload_url));
-
-            if (!createdJobId || !uploadUrls || uploadUrls.length === 0) {
-                throw new Error("Job ID 또는 Upload URL을 찾을 수 없습니다.");
+            if (!createdJobId || uploadUrls.length === 0) {
+                console.error("전체 응답:", result1);
+                throw new Error("Job ID 또는 업로드 URL을 추출하지 못했습니다.");
             }
 
             logToScreen(`✅ [Step 1 완료] Job ID: ${createdJobId}`);
+            logToScreen(` - 발급된 URL 수: ${uploadUrls.length}개`);
             
-            // ==========================================
-            // [Step 2] 발급된 URL로 문서 실물 전송 (Binary PUT)
-            // ==========================================
-            logToScreen(`\n[Step 2] 문서 실물 업로드 시작...`);
+            // ==========================================================
+            // [Step 2] 발급된 개별 URL로 파일 Binary 데이터 전송 (PUT)
+            // ==========================================================
+            logToScreen(`\n[Step 2] 문서 실물 업로드 시작 (Azure Storage) ...`);
 
             for (let i = 0; i < selectedFiles.length; i++) {
                 const file = selectedFiles[i];
-                const uploadUrl = uploadUrls[i];
+                const uploadUrl = uploadUrls[i]; // 순서대로 1:1 매핑
 
                 if (!uploadUrl) {
-                    logToScreen(`❌ ${file.name}에 매핑될 URL이 없습니다.`);
+                    logToScreen(`⚠️ ${file.name}에 대응하는 업로드 URL이 없습니다.`);
                     continue;
                 }
 
-                logToScreen(` ⏳ 전송 중: ${file.name}...`);
+                logToScreen(` ⏳ [${i+1}/${selectedFiles.length}] 전송 중: ${file.name}`);
+
+                // [핵심 로직] Azure Blob Storage 요구 헤더 추가
+                // 한글이나 특수문자 파일명이 에러를 일으키지 않도록 encodeURIComponent 사용
+                const encodedFileName = encodeURIComponent(file.name);
 
                 const putResponse = await fetch(uploadUrl, {
                     method: "PUT",
                     headers: {
-                        "Content-Type": file.type || "application/octet-stream"
+                        "Content-Type": file.type || "application/octet-stream",
+                        "x-ms-meta-filename": encodedFileName, // JSON에 명시된 필수 헤더 1
+                        "x-ms-blob-type": "BlockBlob"          // JSON에 명시된 필수 헤더 2
                     },
                     body: file 
                 });
 
                 if (!putResponse.ok) {
-                    throw new Error(`파일 업로드 실패 (HTTP ${putResponse.status})`);
+                    const errorText = await putResponse.text();
+                    throw new Error(`${file.name} 업로드 실패 (HTTP ${putResponse.status}) - ${errorText}`);
                 }
 
-                logToScreen(` ✅ 완료: ${file.name}`);
+                logToScreen(` ✅ 성공: ${file.name}`);
             }
 
             logToScreen(`\n🎉 [Step 2 완료] 모든 문서가 클라우드에 전송되었습니다!`);
-            logToScreen(`\n--> 최종 승인(Step 3)을 대기 중입니다...`);
+            logToScreen(`\n--> 최종 승인(Step 3) 단계로 이동 가능합니다.`);
+
+            // 다음 단계를 위해 전역 변수로 저장
+            window.currentJobId = createdJobId;
 
         } catch (error) {
             console.error("API Error:", error);
