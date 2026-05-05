@@ -1,5 +1,51 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DocuSign Navigator Mockup - API Step 1 & 2</title>
+    <style>
+        :root { --ds-blue: #09357B; --ds-light-blue: #E6F0FF; --ds-success: #2e8b57; --ds-text: #333333; }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; background-color: #f8f9fa; color: var(--ds-text); display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .container { background: white; width: 90%; max-width: 650px; padding: 40px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center; margin: 40px 0; }
+        .logo { font-weight: bold; font-size: 24px; color: var(--ds-blue); margin-bottom: 20px; }
+        button { border: none; padding: 15px 30px; font-size: 1rem; font-weight: 600; border-radius: 4px; cursor: pointer; color: white; transition: background 0.2s; }
+        .btn-login { background-color: #ffaa00; margin-bottom: 20px; color: #333; }
+        .btn-login:hover { background-color: #e69900; }
+        .btn-upload { background-color: var(--ds-blue); }
+        .btn-upload:hover { background-color: #06265a; }
+        .btn-submit { background-color: var(--ds-success); width: 100%; margin-top: 15px; display: none; }
+        .upload-section { border: 2px dashed #ccc; padding: 40px 30px; border-radius: 10px; background-color: #fafafa; display: none; }
+        .file-list { list-style: none; padding: 0; margin: 20px 0 0; text-align: left; }
+        .file-list li { background: white; border: 1px solid #ddd; padding: 12px; margin-bottom: 8px; border-radius: 5px; display: flex; justify-content: space-between; }
+        #auth-status { margin-bottom: 20px; font-weight: bold; color: #d93025; }
+        .log-box { margin-top: 20px; padding: 15px; background: #eee; border-radius: 5px; text-align: left; font-family: monospace; font-size: 0.85rem; display: none; white-space: pre-wrap; word-wrap: break-word;}
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="logo">DocuSign Navigator</div>
+    <h1>Welcome to Docusign Navigator</h1>
+
+    <div id="auth-status">🔒 Please login Docusign IAM.</div>
+    <button class="btn-login" id="loginBtn" onclick="loginWithDocuSign()">Login with DocuSign</button>
+
+    <div class="upload-section" id="uploadSection">
+        <p>Your uploaded agreements will save into Docusign Navigator.</p>
+        <input type="file" id="fileInput" multiple style="display: none;" onchange="handleFileSelect(event)">
+        <button class="btn-upload" onclick="triggerFileInput()">Upload Agreement</button>
+        <ul class="file-list" id="fileList"></ul>
+        <button class="btn-submit" id="submitBtn" onclick="handleSubmit()">Submit</button>
+    </div>
+
+    <div class="log-box" id="logBox"></div>
+</div>
+
 <script>
-    // [설정값]
+    // ==========================================
+    // 1. 설정값 (환경 변수)
+    // ==========================================
     const CLIENT_ID = "62fe74d2-f89f-4842-b255-17c3b9c4a117"; 
     const ACCOUNT_ID = "61c279f3-3001-436e-9c14-e453cb09f1b3";
     const REDIRECT_URI = window.location.href.split('#')[0]; 
@@ -7,6 +53,9 @@
 
     let accessToken = null;
 
+    // ==========================================
+    // 2. 인증 및 UI 핸들링 로직
+    // ==========================================
     window.onload = function() {
         const hash = window.location.hash.substring(1);
         const params = new URLSearchParams(hash);
@@ -26,17 +75,9 @@
         window.location.href = authUrl; 
     }
 
-    function generateJobName() {
-        const today = new Date();
-        const yyyy = today.getFullYear();
-        const mm = String(today.getMonth() + 1).padStart(2, '0');
-        const dd = String(today.getDate()).padStart(2, '0');
-        const randomStr = String(Math.floor(Math.random() * 10000)).padStart(4, '0');
-        return `${yyyy}${mm}${dd}${randomStr}`;
-    }
-
     let selectedFiles = [];
     function triggerFileInput() { document.getElementById('fileInput').click(); }
+    
     function handleFileSelect(event) {
         selectedFiles = Array.from(event.target.files);
         const fileListElement = document.getElementById('fileList');
@@ -54,13 +95,24 @@
         }
     }
 
+    // ==========================================
+    // 3. 헬퍼 함수 모음
+    // ==========================================
     function logToScreen(message) {
         const logBox = document.getElementById('logBox');
         logBox.style.display = 'block';
         logBox.innerHTML += message + "\n";
     }
 
-    // 💡 파일을 서버리스 함수로 보내기 위해 텍스트(Base64)로 변환해주는 헬퍼 함수
+    function generateJobName() {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        const randomStr = String(Math.floor(Math.random() * 10000)).padStart(4, '0');
+        return `${yyyy}${mm}${dd}${randomStr}`; // 예: 202605051234
+    }
+
     const convertFileToBase64 = (file) => new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.readAsDataURL(file);
@@ -68,6 +120,9 @@
         reader.onerror = (error) => reject(error);
     });
 
+    // ==========================================
+    // 4. 메인 API 호출 로직 (Submit 버튼)
+    // ==========================================
     async function handleSubmit() {
         if (!accessToken) { alert("토큰이 없습니다."); return; }
         if (selectedFiles.length === 0) return;
@@ -80,9 +135,9 @@
         logBox.style.display = 'block';
 
         try {
-            // ==========================================================
-            // [Step 1] Bulk Upload Job 생성
-            // ==========================================================
+            // ----------------------------------------------------------
+            // [Step 1] Bulk Upload Job 생성 (Vercel 프록시 경유)
+            // ----------------------------------------------------------
             const jobName = generateJobName();
             const expectedNumber = selectedFiles.length; 
             
@@ -107,21 +162,25 @@
             const response1 = await fetch(step1Url, step1Options);
             const result1 = await response1.json();
             
+            // 1. Job ID 추출
             const createdJobId = result1.id;
+
+            // 2. Azure Upload URL 추출 (응답 JSON 구조 반영)
             let uploadUrls = [];
             if (result1._embedded && result1._embedded.documents) {
                 uploadUrls = result1._embedded.documents.map(doc => doc._actions.upload_document);
             }
 
             if (!createdJobId || uploadUrls.length === 0) {
+                console.error("전체 응답:", result1);
                 throw new Error("Job ID 또는 업로드 URL을 추출하지 못했습니다.");
             }
 
             logToScreen(`✅ [Step 1 완료] Job ID: ${createdJobId}`);
             
-            // ==========================================================
-            // [Step 2] Vercel 프록시를 경유하여 파일 업로드
-            // ==========================================================
+            // ----------------------------------------------------------
+            // [Step 2] Azure Blob Storage 파일 전송 (Vercel 프록시 경유)
+            // ----------------------------------------------------------
             logToScreen(`\n[Step 2] 문서 실물 업로드 시작 (Vercel 우회) ...`);
 
             for (let i = 0; i < selectedFiles.length; i++) {
@@ -135,10 +194,10 @@
 
                 logToScreen(` ⏳ [${i+1}/${selectedFiles.length}] 전송 중: ${file.name}`);
 
-                // 파일을 Vercel이 이해할 수 있게 Base64 텍스트로 변환
+                // 파일을 텍스트(Base64)로 변환하여 JSON으로 안전하게 포장
                 const base64Data = await convertFileToBase64(file);
 
-                // 방금 만든 내 Vercel API('/api/upload')로 전송
+                // 방금 만든 Vercel API('/api/upload')로 전송
                 const putResponse = await fetch('/api/upload', {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -161,6 +220,7 @@
             logToScreen(`\n🎉 [Step 2 완료] 모든 문서가 클라우드에 전송되었습니다!`);
             logToScreen(`\n--> 최종 승인(Step 3) 단계를 대기 중입니다...`);
 
+            // 다음 단계(Step 3)를 위해 전역 변수로 저장
             window.currentJobId = createdJobId;
 
         } catch (error) {
@@ -172,3 +232,6 @@
         }
     }
 </script>
+
+</body>
+</html>
