@@ -44,7 +44,7 @@
 
 <script>
     // ==========================================
-    // 1. Settings (Environment Variables)
+    // 1. Settings
     // ==========================================
     const CLIENT_ID = "62fe74d2-f89f-4842-b255-17c3b9c4a117"; 
     const ACCOUNT_ID = "61c279f3-3001-436e-9c14-e453cb09f1b3";
@@ -54,7 +54,7 @@
     let accessToken = null;
 
     // ==========================================
-    // 2. Auth & UI Handling Logic
+    // 2. Auth & UI Handling
     // ==========================================
     window.onload = function() {
         const hash = window.location.hash.substring(1);
@@ -110,7 +110,7 @@
         const mm = String(today.getMonth() + 1).padStart(2, '0');
         const dd = String(today.getDate()).padStart(2, '0');
         const randomStr = String(Math.floor(Math.random() * 10000)).padStart(4, '0');
-        return `${yyyy}${mm}${dd}${randomStr}`; // e.g., 202605051234
+        return `${yyyy}${mm}${dd}${randomStr}`;
     }
 
     const convertFileToBase64 = (file) => new Promise((resolve, reject) => {
@@ -121,7 +121,7 @@
     });
 
     // ==========================================
-    // 4. Main API Call Logic (Submit Button)
+    // 4. Main API Call Logic
     // ==========================================
     async function handleSubmit() {
         if (!accessToken) { alert("No access token found."); return; }
@@ -152,11 +152,19 @@
                 })
             });
             const result1 = await response1.json();
+            
+            // Extracting Job ID
             const createdJobId = result1.id;
             
+            // [Update] Extracting Upload URLs AND Document IDs
             let uploadUrls = [];
+            let documentIds = [];
+            
             if (result1._embedded && result1._embedded.documents) {
-                uploadUrls = result1._embedded.documents.map(doc => doc._actions.upload_document);
+                result1._embedded.documents.forEach(doc => {
+                    uploadUrls.push(doc._actions.upload_document);
+                    documentIds.push(doc.id); // Storing the individual Document ID
+                });
             }
 
             if (!createdJobId || uploadUrls.length === 0) {
@@ -165,21 +173,22 @@
             }
 
             logToScreen(`✅ [Step 1 Complete] Job ID: ${createdJobId}`);
+            logToScreen(` - Number of documents created: ${documentIds.length}`);
+            
+            // Store IDs globally for Step 4
+            window.currentJobId = createdJobId;
+            window.uploadedDocumentIds = documentIds; 
             
             // ----------------------------------------------------------
             // [Step 2] Upload Files to Azure Blob Storage
             // ----------------------------------------------------------
-            logToScreen(`\n[Step 2] Starting document upload (via Vercel proxy)...`);
+            logToScreen(`\n[Step 2] Starting document upload...`);
             for (let i = 0; i < selectedFiles.length; i++) {
                 const file = selectedFiles[i];
                 const uploadUrl = uploadUrls[i]; 
+                const docId = documentIds[i]; // Matching ID for the log
 
-                if (!uploadUrl) {
-                    logToScreen(`⚠️ No upload URL mapped for ${file.name}.`);
-                    continue;
-                }
-
-                logToScreen(` ⏳ [${i+1}/${selectedFiles.length}] Uploading: ${file.name}`);
+                logToScreen(` ⏳ [${i+1}/${selectedFiles.length}] Uploading: ${file.name} (ID: ${docId})`);
 
                 const base64Data = await convertFileToBase64(file);
                 const putResponse = await fetch('/api/upload', {
@@ -192,11 +201,11 @@
 
                 if (!putResponse.ok) {
                     const errorJson = await putResponse.json();
-                    throw new Error(`${file.name} upload failed (HTTP ${putResponse.status}) - ${errorJson.details || errorJson.error}`);
+                    throw new Error(`${file.name} upload failed - ${errorJson.details || errorJson.error}`);
                 }
                 logToScreen(` ✅ Success: ${file.name}`);
             }
-            logToScreen(`\n🎉 [Step 2 Complete] All documents uploaded to the cloud!`);
+            logToScreen(`\n🎉 [Step 2 Complete] All documents uploaded.`);
 
             // ----------------------------------------------------------
             // [Step 3] Complete Job Approval
@@ -219,7 +228,8 @@
             }
 
             logToScreen(`\n🏆 [Final Complete] All processes finished successfully!`);
-            logToScreen(`You can now check your documents in DocuSign Navigator.`);
+            logToScreen(`Job ID: ${window.currentJobId}`);
+            logToScreen(`Document IDs stored: ${window.uploadedDocumentIds.join(', ')}`);
 
         } catch (error) {
             console.error("API Error:", error);
