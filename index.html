@@ -122,11 +122,13 @@
         return dynamicLine;
     }
 
-    const startCountdown = (seconds) => new Promise((resolve) => {
+    const startCountdown = (seconds, customMessage) => new Promise((resolve) => {
         let counter = seconds;
         const timerElement = createDynamicLogElement(); 
         const interval = setInterval(() => {
-            timerElement.innerText = `⏳ Waiting Docusign Navigator AI works, ${counter}seconds`;
+            // 메시지를 커스터마이징 할 수 있도록 파라미터 추가
+            const displayMessage = customMessage ? `${customMessage}, ${counter}seconds` : `⏳ Waiting Docusign Navigator AI works, ${counter}seconds`;
+            timerElement.innerText = displayMessage;
             counter--;
             if (counter < 0) {
                 clearInterval(interval);
@@ -212,13 +214,15 @@
             });
             logToScreen(`<span class="log-success">✅ Job Completion requested.</span>`);
 
-            // [Step 3.5] Polling for Real Agreement IDs
-            logToScreen(`\n[Step 3.5] Waiting for Agreement IDs (Real Doc IDs)...`);
+            // [Step 4] Polling for Job Completion & Real Agreement IDs
+            logToScreen(`\n[Step 4] Waiting upload job completed, once done agreement ID will be extracted...`);
             let pendingDocs = [];
             let isJobComplete = false;
 
             while (!isJobComplete) {
-                await startCountdown(60); 
+                // 💡 Step 4 전용 카운트다운 텍스트 적용
+                await startCountdown(60, "⏳ Waiting upload job completed"); 
+                
                 const statusRes = await fetch(`/api/getJobStatus`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -227,32 +231,33 @@
                 const statusData = await statusRes.json();
                 
                 if (statusData.status === "COMPLETE") {
-                    // 💡 핵심: agreement_id를 추출하여 파일 이름과 매핑
                     pendingDocs = statusData._embedded.documents.map(doc => ({
                         id: doc.agreement_id,
                         name: doc.file_name
                     }));
-                    logToScreen(`<span class="log-success">✅ Agreement IDs acquired. Starting AI Extraction.</span>`);
+                    logToScreen(`<span class="log-success">✅ Agreement IDs extracted successfully!</span>`);
                     isJobComplete = true;
                 } else {
                     logToScreen(` ⚠️ Job status: ${statusData.status}. Still processing...`);
                 }
             }
 
-            // [Step 4] Polling for AI Extraction Results
-            logToScreen(`\n[Step 4] Fetching AI Insight Data...`);
+            // [Step 5] Polling for AI Extraction Results
+            logToScreen(`\n[Step 5] Fetching AI Insight Data...`);
             let attempt = 1;
 
             while (pendingDocs.length > 0) {
                 if (attempt > 1) {
                     logToScreen(`\n🔄 [Attempt ${attempt}] Some data not ready. Retrying...`);
-                    await startCountdown(60); 
                 }
+
+                // 💡 Step 5 전용 카운트다운 텍스트 적용 (인자 없이 기본 메시지 사용)
+                await startCountdown(60); 
 
                 let stillPending = [];
 
                 for (const doc of pendingDocs) {
-                    logToScreen(` ⏳ Checking: ${doc.name}`);
+                    logToScreen(` ⏳ Checking AI Extraction for: ${doc.name}`);
                     const res4 = await fetch(`/api/extractAiData`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
@@ -260,7 +265,6 @@
                     });
                     const result4 = await res4.json();
                     
-                    // 💡 데이터가 존재하고 data 배열에 내용이 있을 때만 성공 처리
                     if (res4.ok && result4 && result4.data && result4.data.length > 0) {
                         logToScreen(`<span class="log-success"> ✅ AI Data extracted: ${doc.name}</span>`);
                         renderAIInsights(doc.name, result4.data);
@@ -272,7 +276,7 @@
 
                 pendingDocs = stillPending;
                 attempt++;
-                if (attempt > 15) { // 최대 15분 안전장치
+                if (attempt > 15) {
                     logToScreen(`\n❌ Timeout: Some documents took too long.`);
                     break;
                 }
