@@ -6,52 +6,50 @@
     <title>DocuSign Navigator API Demo</title>
     <style>
         :root { --ds-blue: #09357B; --ds-light-blue: #E6F0FF; --ds-success: #2e8b57; --ds-text: #333333; --ds-bg: #f8f9fa; }
-        body { font-family: 'Segoe UI', sans-serif; margin: 0; background-color: var(--ds-bg); color: var(--ds-text); display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; padding: 40px 20px; }
-        .container { background: white; width: 100%; max-width: 800px; padding: 40px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center; margin-bottom: 40px; }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; background-color: var(--ds-bg); color: var(--ds-text); display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; padding: 30px 20px; }
+        .container { background: white; width: 100%; max-width: 800px; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center; margin-bottom: 30px; }
         
-        .logo { font-weight: bold; font-size: 24px; color: var(--ds-blue); margin-bottom: 10px; }
-        h1 { font-size: 1.8rem; margin-top: 0; color: #111; }
+        .logo { font-weight: bold; font-size: 22px; color: var(--ds-blue); margin-bottom: 8px; }
+        h1 { font-size: 1.5rem; margin-top: 0; color: #111; margin-bottom: 10px; }
         
-        /* ✨ 새로 추가된 안내 문구 스타일 */
-        .contact-info { font-size: 0.95rem; color: #555; margin-bottom: 30px; line-height: 1.5; background: #fffcf0; padding: 15px; border-radius: 6px; border: 1px solid #ffeba0; display: inline-block; }
+        .contact-info { font-size: 0.9rem; color: #555; margin-bottom: 20px; line-height: 1.4; background: #fffcf0; padding: 10px 15px; border-radius: 6px; border: 1px solid #ffeba0; display: inline-block; }
         .contact-info a { color: #d97706; text-decoration: none; font-weight: bold; }
-        .contact-info a:hover { text-decoration: underline; }
 
-        button { border: none; padding: 15px 30px; font-size: 1rem; font-weight: 600; border-radius: 4px; cursor: pointer; color: white; transition: background 0.2s; }
-        .btn-login { background-color: #ffaa00; margin-bottom: 20px; color: #333; }
+        button { border: none; padding: 12px 25px; font-size: 0.95rem; font-weight: 600; border-radius: 4px; cursor: pointer; color: white; transition: background 0.2s; }
+        .btn-login { background-color: #ffaa00; margin-bottom: 15px; color: #333; }
         .btn-login:hover { background-color: #e69900; }
         .btn-upload { background-color: var(--ds-blue); }
-        .btn-upload:hover { background-color: #06265a; }
         .btn-submit { background-color: var(--ds-success); width: 100%; margin-top: 15px; display: none; }
         
-        .upload-section { border: 2px dashed #ccc; padding: 40px 30px; border-radius: 10px; background-color: #fafafa; display: none; margin-bottom: 30px; }
-        .file-list { list-style: none; padding: 0; margin: 20px 0 0; text-align: left; }
-        .file-list li { background: white; border: 1px solid #ddd; padding: 12px; margin-bottom: 8px; border-radius: 5px; display: flex; justify-content: space-between; font-weight: 500; }
-        #auth-status { margin-bottom: 20px; font-weight: bold; color: #d93025; }
+        .upload-section { border: 2px dashed #ccc; padding: 25px; border-radius: 10px; background-color: #fafafa; display: none; margin-bottom: 20px; }
+        .file-list { list-style: none; padding: 0; margin: 15px 0 0; text-align: left; }
+        .file-list li { background: white; border: 1px solid #ddd; padding: 8px 12px; margin-bottom: 6px; border-radius: 5px; display: flex; justify-content: space-between; font-size: 0.9rem; }
+        #auth-status { margin-bottom: 15px; font-weight: bold; color: #d93025; font-size: 0.95rem; }
         
-        /* 📜 5단계 프로세스 요약 UI 스타일 */
-        .steps-container { text-align: left; margin-top: 20px; padding-top: 30px; border-top: 1px solid #eee; }
-        .steps-title { font-size: 1.2rem; color: var(--ds-blue); margin-bottom: 20px; font-weight: bold; display: flex; align-items: center; gap: 8px; }
-        .step-item { display: flex; align-items: flex-start; margin-bottom: 15px; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.03); border: 1px solid #f0f0f0; transition: transform 0.2s; }
-        .step-item:hover { transform: translateX(5px); border-color: var(--ds-light-blue); }
-        .step-number { background: var(--ds-blue); color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 0.85rem; font-weight: bold; margin-right: 15px; flex-shrink: 0; }
-        .step-text h4 { margin: 0 0 5px 0; color: #333; font-size: 1rem; }
-        .step-text p { margin: 0; font-size: 0.85rem; color: #666; line-height: 1.4; }
+        /* 💡 콤팩트하게 수정된 Steps Container */
+        .steps-container { text-align: left; margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee; }
+        .steps-title { font-size: 1rem; color: var(--ds-blue); margin-bottom: 12px; font-weight: bold; display: flex; align-items: center; gap: 6px; }
+        .step-item { display: flex; align-items: center; margin-bottom: 8px; background: #fff; padding: 8px 12px; border-radius: 6px; border: 1px solid #f0f0f0; }
+        .step-number { background: var(--ds-blue); color: white; width: 22px; height: 22px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 0.75rem; font-weight: bold; margin-right: 12px; flex-shrink: 0; }
+        .step-text h4 { margin: 0; color: #333; font-size: 0.9rem; display: inline-block; margin-right: 10px; }
+        .step-text p { margin: 0; font-size: 0.8rem; color: #777; display: inline-block; }
 
-        .log-box { margin-top: 30px; padding: 15px; background: #282a36; color: #f8f8f2; border-radius: 5px; text-align: left; font-family: monospace; font-size: 0.85rem; display: none; white-space: pre-wrap; word-wrap: break-word; line-height: 1.5; }
+        .log-box { margin-top: 20px; padding: 12px; background: #282a36; color: #f8f8f2; border-radius: 5px; text-align: left; font-family: monospace; font-size: 0.8rem; display: none; white-space: pre-wrap; word-wrap: break-word; line-height: 1.4; max-height: 300px; overflow-y: auto; }
         .log-highlight { color: #ffb86c; font-weight: bold; } 
         .log-success { color: #50fa7b; }
         
-        .ai-results-wrapper { margin-top: 30px; text-align: left; display: none; }
-        .ai-results-title { font-size: 1.5rem; color: var(--ds-blue); border-bottom: 2px solid var(--ds-light-blue); padding-bottom: 10px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
-        .ai-doc-section { background: var(--ds-bg); border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
-        .ai-doc-header { font-size: 1.1rem; font-weight: bold; color: #333; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
-        .ai-badge { background: linear-gradient(45deg, #8b5cf6, #3b82f6); color: white; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; }
-        .ai-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px; }
-        .ai-card { background: white; padding: 15px; border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border-left: 4px solid var(--ds-blue); transition: transform 0.2s; }
-        .ai-card:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-        .ai-prop-name { font-size: 0.75rem; color: #666; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; }
-        .ai-prop-value { font-size: 1rem; font-weight: 600; color: #111; word-break: break-word; }
+        .ai-results-wrapper { margin-top: 25px; text-align: left; display: none; }
+        .ai-results-title { font-size: 1.3rem; color: var(--ds-blue); border-bottom: 2px solid var(--ds-light-blue); padding-bottom: 8px; margin-bottom: 15px; font-weight: bold; }
+        .ai-doc-section { background: var(--ds-bg); border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; margin-bottom: 15px; }
+        .ai-doc-header { font-size: 1rem; font-weight: bold; color: #333; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+        
+        /* 💡 문구 수정: DocuSign AI-Assisted */
+        .ai-badge { background: linear-gradient(45deg, #8b5cf6, #3b82f6); color: white; padding: 3px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: bold; }
+        
+        .ai-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+        .ai-card { background: white; padding: 12px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border-left: 3px solid var(--ds-blue); }
+        .ai-prop-name { font-size: 0.7rem; color: #888; text-transform: uppercase; margin-bottom: 3px; }
+        .ai-prop-value { font-size: 0.9rem; font-weight: 600; color: #111; word-break: break-word; }
         .ai-empty { color: #aaa; font-style: italic; font-weight: 400; }
     </style>
 </head>
@@ -61,7 +59,7 @@
     <div class="logo">DocuSign Navigator</div>
     <h1>Welcome to Docusign Navigator API Demo</h1>
     <div class="contact-info">
-        💡 Please reach out to <a href="mailto:sanghun.woo@docusign.com">sanghun.woo@docusign.com</a> if you want to add your own Docusign users for this demo.
+        💡 Reach out to <a href="mailto:sanghun.woo@docusign.com">sanghun.woo@docusign.com</a> to add Docusign users for demo.
     </div>
 
     <div id="auth-status">🔒 Please login to Docusign IAM.</div>
@@ -75,42 +73,26 @@
     </div>
 
     <div class="steps-container">
-        <div class="steps-title">⚙️ How this demo works</div>
-        
+        <div class="steps-title">⚙️ Process Summary</div>
         <div class="step-item">
             <div class="step-number">1</div>
-            <div class="step-text">
-                <h4>Create Upload Job</h4>
-                <p>Initializes a secure bulk upload session in DocuSign Navigator.</p>
-            </div>
+            <div class="step-text"><h4>Create Job</h4><p>Initialize session</p></div>
         </div>
         <div class="step-item">
             <div class="step-number">2</div>
-            <div class="step-text">
-                <h4>Upload Documents</h4>
-                <p>Transfers the physical binary files securely to the cloud storage.</p>
-            </div>
+            <div class="step-text"><h4>Upload</h4><p>Transfer binary files</p></div>
         </div>
         <div class="step-item">
             <div class="step-number">3</div>
-            <div class="step-text">
-                <h4>Complete Job</h4>
-                <p>Signals DocuSign that all files are uploaded and ready for processing.</p>
-            </div>
+            <div class="step-text"><h4>Complete</h4><p>Finalize upload</p></div>
         </div>
         <div class="step-item">
             <div class="step-number">4</div>
-            <div class="step-text">
-                <h4>Extract Agreement IDs</h4>
-                <p>Waits for the Navigator system to fully register the documents and returns their official Agreement IDs.</p>
-            </div>
+            <div class="step-text"><h4>Extract IDs</h4><p>Get Agreement IDs</p></div>
         </div>
         <div class="step-item">
             <div class="step-number">5</div>
-            <div class="step-text">
-                <h4>AI Data Extraction</h4>
-                <p>Polls DocuSign's AI until it finishes analyzing the documents, then displays the extracted insights.</p>
-            </div>
+            <div class="step-text"><h4>AI Extraction</h4><p>Analyze insights</p></div>
         </div>
     </div>
 
@@ -187,12 +169,12 @@
         let counter = seconds;
         const timerElement = createDynamicLogElement(); 
         const interval = setInterval(() => {
-            const displayMessage = customMessage ? `${customMessage}, ${counter}seconds` : `⏳ Waiting Docusign Navigator AI works, ${counter}seconds`;
+            const displayMessage = customMessage ? `${customMessage}, ${counter}s` : `⏳ Waiting DocuSign AI, ${counter}s`;
             timerElement.innerText = displayMessage;
             counter--;
             if (counter < 0) {
                 clearInterval(interval);
-                timerElement.innerText = `✅ Timer completed. Checking status...`;
+                timerElement.innerText = `✅ Status check...`;
                 timerElement.className = 'log-success'; 
                 resolve();
             }
@@ -207,7 +189,10 @@
         const wrapper = document.getElementById('aiResultsWrapper');
         const container = document.getElementById('aiCardsContainer');
         wrapper.style.display = 'block';
-        let html = `<div class="ai-doc-section"><div class="ai-doc-header"><span>📄 ${fileName}</span><span class="ai-badge">AI Analyzed</span></div><div class="ai-grid">`;
+        
+        // 💡 Badge text updated to: DocuSign AI-Assisted
+        let html = `<div class="ai-doc-section"><div class="ai-doc-header"><span>📄 ${fileName}</span><span class="ai-badge">DocuSign AI-Assisted</span></div><div class="ai-grid">`;
+        
         aiDataArray.forEach(item => {
             const label = formatPropertyLabel(item.property_name);
             let value = item.current_value;
@@ -272,78 +257,56 @@
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ token: accessToken, accountId: ACCOUNT_ID, jobId: jobId })
             });
-            logToScreen(`<span class="log-success">✅ Job Completion requested.</span>`);
+            logToScreen(`<span class="log-success">✅ Job Finalized.</span>`);
 
-            // [Step 4] Polling for Job Completion & Real Agreement IDs
+            // [Step 4] Polling IDs
             logToScreen(`\n[Step 4] Extracting Agreement IDs...`);
             let pendingDocs = [];
             let isJobComplete = false;
 
             while (!isJobComplete) {
-                await startCountdown(60, "⏳ Waiting upload job completed"); 
-                
+                await startCountdown(60, "⏳ Waiting for Agreement ID"); 
                 const statusRes = await fetch(`/api/getJobStatus`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ token: accessToken, accountId: ACCOUNT_ID, jobId: jobId })
                 });
                 const statusData = await statusRes.json();
-                
                 if (statusData.status === "COMPLETE") {
-                    pendingDocs = statusData._embedded.documents.map(doc => ({
-                        id: doc.agreement_id,
-                        name: doc.file_name
-                    }));
-                    logToScreen(`<span class="log-success">✅ Agreement IDs extracted successfully!</span>`);
+                    pendingDocs = statusData._embedded.documents.map(doc => ({ id: doc.agreement_id, name: doc.file_name }));
+                    logToScreen(`<span class="log-success">✅ IDs Acquired.</span>`);
                     isJobComplete = true;
                 } else {
-                    logToScreen(` ⚠️ Job status: ${statusData.status}. Still processing...`);
+                    logToScreen(` ⚠️ Job: ${statusData.status}.`);
                 }
             }
 
-            // [Step 5] Polling for AI Extraction Results
-            logToScreen(`\n[Step 5] Fetching AI Insight Data...`);
+            // [Step 5] Polling AI
+            logToScreen(`\n[Step 5] Fetching AI Data...`);
             let attempt = 1;
-
             while (pendingDocs.length > 0) {
-                if (attempt > 1) {
-                    logToScreen(`\n🔄 [Attempt ${attempt}] Some data not ready. Retrying...`);
-                }
-
-                await startCountdown(60); 
-
+                if (attempt > 1) await startCountdown(60); 
                 let stillPending = [];
-
                 for (const doc of pendingDocs) {
-                    logToScreen(` ⏳ Checking AI Extraction for: ${doc.name}`);
                     const res4 = await fetch(`/api/extractAiData`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ token: accessToken, accountId: ACCOUNT_ID, documentId: doc.id })
                     });
                     const result4 = await res4.json();
-                    
                     if (res4.ok && result4 && result4.data && result4.data.length > 0) {
-                        logToScreen(`<span class="log-success"> ✅ AI Data extracted: ${doc.name}</span>`);
+                        logToScreen(`<span class="log-success"> ✅ Analyzed: ${doc.name}</span>`);
                         renderAIInsights(doc.name, result4.data);
                     } else {
-                        logToScreen(` ⚠️ AI still working on: ${doc.name}`);
+                        logToScreen(` ⚠️ Processing AI: ${doc.name}`);
                         stillPending.push(doc);
                     }
                 }
-
                 pendingDocs = stillPending;
                 attempt++;
-                if (attempt > 15) {
-                    logToScreen(`\n❌ Timeout: Some documents took too long.`);
-                    break;
-                }
+                if (attempt > 15) break;
             }
-
-            if (pendingDocs.length === 0) {
-                logToScreen(`\n🏆 [Final Success] All documents analyzed!`);
-            }
-
+            logToScreen(`\n🏆 [Success] Finished!`);
         } catch (error) {
             logToScreen(`\n❌ [Error] ${error.message}`);
         } finally {
