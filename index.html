@@ -3,24 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DocuSign Navigator Mockup - Full Automation</title>
+    <title>DocuSign Navigator API Demo</title>
     <style>
         :root { --ds-blue: #09357B; --ds-light-blue: #E6F0FF; --ds-success: #2e8b57; --ds-text: #333333; --ds-bg: #f8f9fa; }
         body { font-family: 'Segoe UI', sans-serif; margin: 0; background-color: var(--ds-bg); color: var(--ds-text); display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; padding: 40px 20px; }
         .container { background: white; width: 100%; max-width: 800px; padding: 40px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center; margin-bottom: 40px; }
-        .logo { font-weight: bold; font-size: 24px; color: var(--ds-blue); margin-bottom: 20px; }
+        
+        .logo { font-weight: bold; font-size: 24px; color: var(--ds-blue); margin-bottom: 10px; }
+        h1 { font-size: 1.8rem; margin-top: 0; color: #111; }
+        
+        /* ✨ 새로 추가된 안내 문구 스타일 */
+        .contact-info { font-size: 0.95rem; color: #555; margin-bottom: 30px; line-height: 1.5; background: #fffcf0; padding: 15px; border-radius: 6px; border: 1px solid #ffeba0; display: inline-block; }
+        .contact-info a { color: #d97706; text-decoration: none; font-weight: bold; }
+        .contact-info a:hover { text-decoration: underline; }
+
         button { border: none; padding: 15px 30px; font-size: 1rem; font-weight: 600; border-radius: 4px; cursor: pointer; color: white; transition: background 0.2s; }
         .btn-login { background-color: #ffaa00; margin-bottom: 20px; color: #333; }
         .btn-login:hover { background-color: #e69900; }
         .btn-upload { background-color: var(--ds-blue); }
         .btn-upload:hover { background-color: #06265a; }
         .btn-submit { background-color: var(--ds-success); width: 100%; margin-top: 15px; display: none; }
-        .upload-section { border: 2px dashed #ccc; padding: 40px 30px; border-radius: 10px; background-color: #fafafa; display: none; }
+        
+        .upload-section { border: 2px dashed #ccc; padding: 40px 30px; border-radius: 10px; background-color: #fafafa; display: none; margin-bottom: 30px; }
         .file-list { list-style: none; padding: 0; margin: 20px 0 0; text-align: left; }
         .file-list li { background: white; border: 1px solid #ddd; padding: 12px; margin-bottom: 8px; border-radius: 5px; display: flex; justify-content: space-between; font-weight: 500; }
         #auth-status { margin-bottom: 20px; font-weight: bold; color: #d93025; }
         
-        .log-box { margin-top: 20px; padding: 15px; background: #282a36; color: #f8f8f2; border-radius: 5px; text-align: left; font-family: monospace; font-size: 0.85rem; display: none; white-space: pre-wrap; word-wrap: break-word; line-height: 1.5; }
+        /* 📜 5단계 프로세스 요약 UI 스타일 */
+        .steps-container { text-align: left; margin-top: 20px; padding-top: 30px; border-top: 1px solid #eee; }
+        .steps-title { font-size: 1.2rem; color: var(--ds-blue); margin-bottom: 20px; font-weight: bold; display: flex; align-items: center; gap: 8px; }
+        .step-item { display: flex; align-items: flex-start; margin-bottom: 15px; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.03); border: 1px solid #f0f0f0; transition: transform 0.2s; }
+        .step-item:hover { transform: translateX(5px); border-color: var(--ds-light-blue); }
+        .step-number { background: var(--ds-blue); color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 0.85rem; font-weight: bold; margin-right: 15px; flex-shrink: 0; }
+        .step-text h4 { margin: 0 0 5px 0; color: #333; font-size: 1rem; }
+        .step-text p { margin: 0; font-size: 0.85rem; color: #666; line-height: 1.4; }
+
+        .log-box { margin-top: 30px; padding: 15px; background: #282a36; color: #f8f8f2; border-radius: 5px; text-align: left; font-family: monospace; font-size: 0.85rem; display: none; white-space: pre-wrap; word-wrap: break-word; line-height: 1.5; }
         .log-highlight { color: #ffb86c; font-weight: bold; } 
         .log-success { color: #50fa7b; }
         
@@ -41,9 +59,12 @@
 
 <div class="container">
     <div class="logo">DocuSign Navigator</div>
-    <h1>Welcome to Docusign Navigator</h1>
+    <h1>Welcome to Docusign Navigator API Demo</h1>
+    <div class="contact-info">
+        💡 Please reach out to <a href="mailto:sanghun.woo@docusign.com">sanghun.woo@docusign.com</a> if you want to add your own Docusign users for this demo.
+    </div>
 
-    <div id="auth-status">🔒 Please login Docusign IAM.</div>
+    <div id="auth-status">🔒 Please login to Docusign IAM.</div>
     <button class="btn-login" id="loginBtn" onclick="loginWithDocuSign()">Login with DocuSign</button>
 
     <div class="upload-section" id="uploadSection">
@@ -51,6 +72,46 @@
         <button class="btn-upload" onclick="triggerFileInput()">Select Agreements</button>
         <ul class="file-list" id="fileList"></ul>
         <button class="btn-submit" id="submitBtn" onclick="handleSubmit()">Upload & Analyze</button>
+    </div>
+
+    <div class="steps-container">
+        <div class="steps-title">⚙️ How this demo works</div>
+        
+        <div class="step-item">
+            <div class="step-number">1</div>
+            <div class="step-text">
+                <h4>Create Upload Job</h4>
+                <p>Initializes a secure bulk upload session in DocuSign Navigator.</p>
+            </div>
+        </div>
+        <div class="step-item">
+            <div class="step-number">2</div>
+            <div class="step-text">
+                <h4>Upload Documents</h4>
+                <p>Transfers the physical binary files securely to the cloud storage.</p>
+            </div>
+        </div>
+        <div class="step-item">
+            <div class="step-number">3</div>
+            <div class="step-text">
+                <h4>Complete Job</h4>
+                <p>Signals DocuSign that all files are uploaded and ready for processing.</p>
+            </div>
+        </div>
+        <div class="step-item">
+            <div class="step-number">4</div>
+            <div class="step-text">
+                <h4>Extract Agreement IDs</h4>
+                <p>Waits for the Navigator system to fully register the documents and returns their official Agreement IDs.</p>
+            </div>
+        </div>
+        <div class="step-item">
+            <div class="step-number">5</div>
+            <div class="step-text">
+                <h4>AI Data Extraction</h4>
+                <p>Polls DocuSign's AI until it finishes analyzing the documents, then displays the extracted insights.</p>
+            </div>
+        </div>
     </div>
 
     <div class="log-box" id="logBox"></div>
@@ -126,7 +187,6 @@
         let counter = seconds;
         const timerElement = createDynamicLogElement(); 
         const interval = setInterval(() => {
-            // 메시지를 커스터마이징 할 수 있도록 파라미터 추가
             const displayMessage = customMessage ? `${customMessage}, ${counter}seconds` : `⏳ Waiting Docusign Navigator AI works, ${counter}seconds`;
             timerElement.innerText = displayMessage;
             counter--;
@@ -215,12 +275,11 @@
             logToScreen(`<span class="log-success">✅ Job Completion requested.</span>`);
 
             // [Step 4] Polling for Job Completion & Real Agreement IDs
-            logToScreen(`\n[Step 4] Waiting upload job completed, once done agreement ID will be extracted...`);
+            logToScreen(`\n[Step 4] Extracting Agreement IDs...`);
             let pendingDocs = [];
             let isJobComplete = false;
 
             while (!isJobComplete) {
-                // 💡 Step 4 전용 카운트다운 텍스트 적용
                 await startCountdown(60, "⏳ Waiting upload job completed"); 
                 
                 const statusRes = await fetch(`/api/getJobStatus`, {
@@ -251,7 +310,6 @@
                     logToScreen(`\n🔄 [Attempt ${attempt}] Some data not ready. Retrying...`);
                 }
 
-                // 💡 Step 5 전용 카운트다운 텍스트 적용 (인자 없이 기본 메시지 사용)
                 await startCountdown(60); 
 
                 let stillPending = [];
