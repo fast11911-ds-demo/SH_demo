@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DocuSign Navigator Mockup - API Step 1 & 2</title>
+    <title>DocuSign Navigator Mockup - API Step 1, 2 & 3</title>
     <style>
         :root { --ds-blue: #09357B; --ds-light-blue: #E6F0FF; --ds-success: #2e8b57; --ds-text: #333333; }
         body { font-family: 'Segoe UI', sans-serif; margin: 0; background-color: #f8f9fa; color: var(--ds-text); display: flex; justify-content: center; align-items: center; min-height: 100vh; }
@@ -44,7 +44,7 @@
 
 <script>
     // ==========================================
-    // 1. 설정값 (환경 변수)
+    // 1. Settings (Environment Variables)
     // ==========================================
     const CLIENT_ID = "62fe74d2-f89f-4842-b255-17c3b9c4a117"; 
     const ACCOUNT_ID = "61c279f3-3001-436e-9c14-e453cb09f1b3";
@@ -54,14 +54,14 @@
     let accessToken = null;
 
     // ==========================================
-    // 2. 인증 및 UI 핸들링 로직
+    // 2. Auth & UI Handling Logic
     // ==========================================
     window.onload = function() {
         const hash = window.location.hash.substring(1);
         const params = new URLSearchParams(hash);
         if (params.has("access_token")) {
             accessToken = params.get("access_token");
-            document.getElementById('auth-status').innerText = "✅ 로그인 성공! (Token 확보됨)";
+            document.getElementById('auth-status').innerText = "✅ Login successful! (Token acquired)";
             document.getElementById('auth-status').style.color = "var(--ds-success)";
             document.getElementById('loginBtn').style.display = "none";
             document.getElementById('uploadSection').style.display = "block";
@@ -96,7 +96,7 @@
     }
 
     // ==========================================
-    // 3. 헬퍼 함수 모음
+    // 3. Helper Functions
     // ==========================================
     function logToScreen(message) {
         const logBox = document.getElementById('logBox');
@@ -110,7 +110,7 @@
         const mm = String(today.getMonth() + 1).padStart(2, '0');
         const dd = String(today.getDate()).padStart(2, '0');
         const randomStr = String(Math.floor(Math.random() * 10000)).padStart(4, '0');
-        return `${yyyy}${mm}${dd}${randomStr}`; // 예: 202605051234
+        return `${yyyy}${mm}${dd}${randomStr}`; // e.g., 202605051234
     }
 
     const convertFileToBase64 = (file) => new Promise((resolve, reject) => {
@@ -121,10 +121,10 @@
     });
 
     // ==========================================
-    // 4. 메인 API 호출 로직 (Submit 버튼)
+    // 4. Main API Call Logic (Submit Button)
     // ==========================================
     async function handleSubmit() {
-        if (!accessToken) { alert("토큰이 없습니다."); return; }
+        if (!accessToken) { alert("No access token found."); return; }
         if (selectedFiles.length === 0) return;
 
         const submitBtn = document.getElementById('submitBtn');
@@ -136,96 +136,94 @@
 
         try {
             // ----------------------------------------------------------
-            // [Step 1] Bulk Upload Job 생성 (Vercel 프록시 경유)
+            // [Step 1] Create Bulk Upload Job
             // ----------------------------------------------------------
             const jobName = generateJobName();
             const expectedNumber = selectedFiles.length; 
-            
-            logToScreen(`[Step 1] Job 생성 요청 중... (파일명: ${jobName})`);
+            logToScreen(`[Step 1] Requesting Job creation... (Job Name: ${jobName})`);
 
-            const step1Url = `/api/createJob`; 
-            const step1Options = {
+            const response1 = await fetch(`/api/createJob`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     token: accessToken,
                     accountId: ACCOUNT_ID,
-                    bodyData: {
-                        "agreement_set_ids": [],
-                        "expected_number_of_docs": expectedNumber,
-                        "job_name": jobName,
-                        "language": "en-US"
-                    }
+                    bodyData: { "agreement_set_ids": [], "expected_number_of_docs": expectedNumber, "job_name": jobName, "language": "en-US" }
                 })
-            };
-            
-            const response1 = await fetch(step1Url, step1Options);
+            });
             const result1 = await response1.json();
-            
-            // 1. Job ID 추출
             const createdJobId = result1.id;
-
-            // 2. Azure Upload URL 추출 (응답 JSON 구조 반영)
+            
             let uploadUrls = [];
             if (result1._embedded && result1._embedded.documents) {
                 uploadUrls = result1._embedded.documents.map(doc => doc._actions.upload_document);
             }
 
             if (!createdJobId || uploadUrls.length === 0) {
-                console.error("전체 응답:", result1);
-                throw new Error("Job ID 또는 업로드 URL을 추출하지 못했습니다.");
+                console.error("Full Response:", result1);
+                throw new Error("Failed to extract Job ID or Upload URLs.");
             }
 
-            logToScreen(`✅ [Step 1 완료] Job ID: ${createdJobId}`);
+            logToScreen(`✅ [Step 1 Complete] Job ID: ${createdJobId}`);
             
             // ----------------------------------------------------------
-            // [Step 2] Azure Blob Storage 파일 전송 (Vercel 프록시 경유)
+            // [Step 2] Upload Files to Azure Blob Storage
             // ----------------------------------------------------------
-            logToScreen(`\n[Step 2] 문서 실물 업로드 시작 (Vercel 우회) ...`);
-
+            logToScreen(`\n[Step 2] Starting document upload (via Vercel proxy)...`);
             for (let i = 0; i < selectedFiles.length; i++) {
                 const file = selectedFiles[i];
                 const uploadUrl = uploadUrls[i]; 
 
                 if (!uploadUrl) {
-                    logToScreen(`⚠️ ${file.name}에 대응하는 업로드 URL이 없습니다.`);
+                    logToScreen(`⚠️ No upload URL mapped for ${file.name}.`);
                     continue;
                 }
 
-                logToScreen(` ⏳ [${i+1}/${selectedFiles.length}] 전송 중: ${file.name}`);
+                logToScreen(` ⏳ [${i+1}/${selectedFiles.length}] Uploading: ${file.name}`);
 
-                // 파일을 텍스트(Base64)로 변환하여 JSON으로 안전하게 포장
                 const base64Data = await convertFileToBase64(file);
-
-                // 방금 만든 Vercel API('/api/upload')로 전송
                 const putResponse = await fetch('/api/upload', {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        uploadUrl: uploadUrl,
-                        fileName: file.name,
-                        fileType: file.type,
-                        fileBase64: base64Data
+                        uploadUrl: uploadUrl, fileName: file.name, fileType: file.type, fileBase64: base64Data
                     })
                 });
 
                 if (!putResponse.ok) {
                     const errorJson = await putResponse.json();
-                    throw new Error(`${file.name} 업로드 실패 (HTTP ${putResponse.status}) - ${errorJson.details || errorJson.error}`);
+                    throw new Error(`${file.name} upload failed (HTTP ${putResponse.status}) - ${errorJson.details || errorJson.error}`);
                 }
+                logToScreen(` ✅ Success: ${file.name}`);
+            }
+            logToScreen(`\n🎉 [Step 2 Complete] All documents uploaded to the cloud!`);
 
-                logToScreen(` ✅ 성공: ${file.name}`);
+            // ----------------------------------------------------------
+            // [Step 3] Complete Job Approval
+            // ----------------------------------------------------------
+            logToScreen(`\n[Step 3] Requesting final completion...`);
+
+            const response3 = await fetch(`/api/completeJob`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    token: accessToken,
+                    accountId: ACCOUNT_ID,
+                    jobId: createdJobId
+                })
+            });
+
+            if (!response3.ok) {
+                const errJson = await response3.json();
+                throw new Error(`Final completion failed: ${errJson.details || "Unknown error"}`);
             }
 
-            logToScreen(`\n🎉 [Step 2 완료] 모든 문서가 클라우드에 전송되었습니다!`);
-            logToScreen(`\n--> 최종 승인(Step 3) 단계를 대기 중입니다...`);
-
-            // 다음 단계(Step 3)를 위해 전역 변수로 저장
-            window.currentJobId = createdJobId;
+            logToScreen(`\n🏆 [Final Complete] All processes finished successfully!`);
+            logToScreen(`You can now check your documents in DocuSign Navigator.`);
 
         } catch (error) {
             console.error("API Error:", error);
-            logToScreen(`\n❌ [에러 발생] ${error.message}`);
+            logToScreen(`\n❌ [Error occurred] ${error.message}`);
         } finally {
             submitBtn.disabled = false;
             submitBtn.innerText = "Submit";
